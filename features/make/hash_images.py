@@ -52,4 +52,6 @@ for file_ in ['train_jpg', 'test_jpg']:
             print ('Could not read ' + str(name) + ' in zip.' )
 
 df = pd.DataFrame(img_id_hash,columns=['image_dir', 'image_id','image_hash'])
-df.to_csv(path+'../features/image_dhash.csv', index = False)
+gp = df['image_hash'].value_counts().reset_index().rename(columns = {'index':'image_hash', 'image_hash':'image_hash_ct'})
+df = df.merge(gp, on = 'image_hash')
+df.to_csv(path+'../features/image_dhash.csv.gz', index = False, compression = 'gzip')
