@@ -25,7 +25,7 @@ from keras.preprocessing.sequence import pad_sequences
 import random
 from keras.layers import Input, Dropout, Dense, BatchNormalization, \
     Activation, concatenate, GRU, CuDNNGRU, Embedding, Flatten, Bidirectional, \
-    MaxPooling1D, Conv1D, Add, Reshape, Lambda, PReLU
+    MaxPooling1D, Conv1D, Add, Reshape, Lambda, PReLU, GaussianDropout
 from keras.models import Model
 from keras.callbacks import ModelCheckpoint, Callback, EarlyStopping#, TensorBoard
 from keras import backend as K
@@ -237,25 +237,24 @@ def tst_generator(dt, bsize):
             yield Xbatch
 
 def get_model():
-    dr = 0.1
+    dr = 0.2
     ##Inputs
     title = Input(shape=[None], name="title")
     description = Input(shape=[None], name="description")
     
     #Embeddings layers
-    emb_size = 32
-    emb_dsc                 = Embedding(MAX_DSC, emb_size)(description) 
-    emb_ttl                 = Embedding(MAX_TTL, emb_size)(title) 
+    emb_size = 128
+    emb_dsc = Embedding(MAX_DSC, emb_size)(description) 
+    emb_ttl = Embedding(MAX_TTL, emb_size)(title) 
+    #emb_dsc = GaussianDropout(dr)(emb_dsc)
+    #emb_ttl = GaussianDropout(dr)(emb_ttl)
+
     
     # GRU Layer
-    rnn_dsc = GRU(16, recurrent_dropout=0.0) (emb_dsc)
-    rnn_ttl = GRU(16, recurrent_dropout=0.0) (emb_ttl)
+    rnn_dsc = GRU(128, recurrent_dropout=0.0) (emb_dsc)
+    rnn_ttl = GRU(128, recurrent_dropout=0.0) (emb_ttl)
     #rnn_dsc = CuDNNGRU(16) (emb_dsc)
     #rnn_ttl = CuDNNGRU(16) (emb_ttl)
-    
-    ## Batchnorm
-    #rnn_dsc = BatchNormalization()(rnn_dsc)
-    #rnn_ttl = BatchNormalization()(rnn_ttl)
     
     #main layer
     main_l = concatenate([
@@ -263,16 +262,16 @@ def get_model():
         , rnn_ttl
     ])
     
-    main_l = Dropout(dr)(Dense(128) (main_l))
+    #main_l = BatchNormalization()(main_l)
+    #main_l = Dropout(dr)(main_l)
+    main_l = Dense(64) (main_l)
     main_l = PReLU()(main_l)
-    #main_l = BatchNormalization()(main_l)
-    main_l = Dropout(dr)(Dense(64) (main_l))
+    main_l = BatchNormalization()(main_l)
+    main_l = Dropout(dr)(main_l)
+    main_l = Dense(32) (main_l)
     main_l = PReLU()(main_l)
-    #main_l = BatchNormalization()(main_l)
-    #main_l = Dropout(dr)(Dense(32) (main_l))
-    #main_l = PReLU()(main_l)
-    #main_l = BatchNormalization()(main_l)
-    #main_l = Dropout(0.05)(main_l)
+    main_l = BatchNormalization()(main_l)
+    main_l = Dropout(0.05)(main_l)
     
     #output
     output = Dense(1,activation="linear") (main_l)
@@ -295,12 +294,17 @@ bags = 2
 val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
 y_pred_epochs = []
 
-epochs = 2
+epochs = 10
 batchSize = 512*2
 steps = (dtrain.shape[0]/batchSize+1)*epochs
+lr_init, lr_fin = 0.0008, 0.0001
+lr_decay  = (lr_init - lr_fin)/steps
 model = get_model()
+K.set_value(model.optimizer.lr, lr_init)
+K.set_value(model.optimizer.decay, lr_decay)
+model.summary()
 
-for i in range(30):
+for i in range(epochs):
     model.fit_generator(
                         trn_generator(dtrain, dtrain.target, batchSize)
                         , epochs=1
@@ -308,21 +312,17 @@ for i in range(30):
                         , steps_per_epoch = int(np.ceil(dtrain.shape[0]/batchSize))
                         , validation_data = val_generator(dvalid, dvalid.target, batchSize)
                         , validation_steps = int(np.ceil(dvalid.shape[0]/batchSize))
-                        , verbose=2
+                        , verbose=1
                         )
     batchSizeTst = 512
     y_pred = model.predict_generator(
                     tst_generator(dvalid.iloc[val_sorted_ix], batchSizeTst)
                     , steps = int(np.ceil(dvalid.shape[0]*1./batchSizeTst))
                     , max_queue_size=1 
-                    , verbose=1)[val_sorted_ix.argsort()]
+                    , verbose=2)[val_sorted_ix.argsort()]
     
     #pd.Series(y_pred.flatten()).hist()
     #print("Model Evaluation Stage")
     print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
 
-# Epoch1 - RMSE: 0.22369
-# Epoch2 - RMSE: 0.21817
-# Epoch3 - RMSE: 0.21518
-# Epoch6 - RMSE: 0.20495
-# Epoch16 - RMSE: 0.19459
+# Epoch1 - RMSE: 0.2269
