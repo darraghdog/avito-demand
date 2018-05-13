@@ -12,7 +12,6 @@ from sklearn.pipeline import FeatureUnion
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from scipy.sparse import hstack, csr_matrix
 from sklearn.model_selection import train_test_split
-import lightgbm as lgb
 import matplotlib.pyplot as plt
 from numba import jit
 import nltk, re
@@ -25,8 +24,8 @@ from keras.preprocessing.sequence import pad_sequences
 
 import random
 from keras.layers import Input, Dropout, Dense, BatchNormalization, \
-    Activation, concatenate, GRU, Embedding, Flatten, Bidirectional, \
-    MaxPooling1D, Conv1D, Add, Reshape, Lambda
+    Activation, concatenate, GRU, CuDNNGRU, Embedding, Flatten, Bidirectional, \
+    MaxPooling1D, Conv1D, Add, Reshape, Lambda, PReLU
 from keras.models import Model
 from keras.callbacks import ModelCheckpoint, Callback, EarlyStopping#, TensorBoard
 from keras import backend as K
@@ -34,7 +33,6 @@ from keras import optimizers
 from keras.layers import GlobalMaxPooling1D
 from keras import initializers
 from keras.utils import plot_model
-
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
@@ -57,8 +55,8 @@ print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 traindf['activation_date'].value_counts()
 
 print('[{}] Create Validation Index'.format(time.time() - start_time))
-trnidx = (traindf.activation_date<=pd.to_datetime('2017-03-27')).values
-validx = (traindf.activation_date>=pd.to_datetime('2017-03-26')).values
+trnidx = (traindf.activation_date<=pd.to_datetime('2017-03-26')).values
+validx = (traindf.activation_date>=pd.to_datetime('2017-03-27')).values
 
 
 print('[{}] Combine Train and Test'.format(time.time() - start_time))
@@ -67,6 +65,7 @@ df['idx'] = range(df.shape[0])
 del traindf,testdf
 gc.collect()
 print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))    
+
 
 print('[{}] Feature Engineering Price'.format(time.time() - start_time))
 col = "price"
@@ -238,7 +237,7 @@ def tst_generator(dt, bsize):
             yield Xbatch
 
 def get_model():
-    dr = 0.2
+    dr = 0.1
     ##Inputs
     title = Input(shape=[None], name="title")
     description = Input(shape=[None], name="description")
@@ -251,12 +250,12 @@ def get_model():
     # GRU Layer
     rnn_dsc = GRU(16, recurrent_dropout=0.0) (emb_dsc)
     rnn_ttl = GRU(16, recurrent_dropout=0.0) (emb_ttl)
-    #rnn_dsc = CuDNNGRU(16, recurrent_dropout=0.0) (emb_dsc)
-    #rnn_ttl = CuDNNGRU(16, recurrent_dropout=0.0) (emb_ttl)
+    #rnn_dsc = CuDNNGRU(16) (emb_dsc)
+    #rnn_ttl = CuDNNGRU(16) (emb_ttl)
     
-    # Batchnorm
-    rnn_dsc = BatchNormalization()(rnn_dsc)
-    rnn_ttl = BatchNormalization()(rnn_ttl)
+    ## Batchnorm
+    #rnn_dsc = BatchNormalization()(rnn_dsc)
+    #rnn_ttl = BatchNormalization()(rnn_ttl)
     
     #main layer
     main_l = concatenate([
@@ -266,14 +265,14 @@ def get_model():
     
     main_l = Dropout(dr)(Dense(128) (main_l))
     main_l = PReLU()(main_l)
-    main_l = BatchNormalization()(main_l)
+    #main_l = BatchNormalization()(main_l)
     main_l = Dropout(dr)(Dense(64) (main_l))
     main_l = PReLU()(main_l)
-    main_l = BatchNormalization()(main_l)
-    main_l = Dropout(dr)(Dense(32) (main_l))
-    main_l = PReLU()(main_l)
-    main_l = BatchNormalization()(main_l)
-    main_l = Dropout(0.05)(main_l)
+    #main_l = BatchNormalization()(main_l)
+    #main_l = Dropout(dr)(Dense(32) (main_l))
+    #main_l = PReLU()(main_l)
+    #main_l = BatchNormalization()(main_l)
+    #main_l = Dropout(0.05)(main_l)
     
     #output
     output = Dense(1,activation="linear") (main_l)
@@ -297,30 +296,30 @@ val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"
 y_pred_epochs = []
 
 epochs = 2
-batchSize = 512 
+batchSize = 512*2
 steps = (dtrain.shape[0]/batchSize+1)*epochs
 model = get_model()
 
-model.fit_generator(
-                    trn_generator(dtrain, dtrain.target, batchSize)
-                    , epochs=10
-                    , max_queue_size=1
-                    , steps_per_epoch = int(np.ceil(dtrain.shape[0]/batchSize))
-                    , validation_data = val_generator(dvalid, dvalid.target, batchSize)
-                    , validation_steps = int(np.ceil(dvalid.shape[0]/batchSize))
-                    , verbose=1
-                    )
-dtrain['target'].hist()
-
-y_pred = model.predict_generator(
-                tst_generator(dvalid.iloc[val_sorted_ix], batchSize)
-                , steps = int(np.ceil(dvalid.shape[0]*1./batchSize))
-                , max_queue_size=1 
-                , verbose=1)[val_sorted_ix.argsort()]
-
-pd.Series(y_pred.flatten()).hist()
-print("Model Evaluation Stage")
-print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
+for i in range(30):
+    model.fit_generator(
+                        trn_generator(dtrain, dtrain.target, batchSize)
+                        , epochs=1
+                        , max_queue_size=1
+                        , steps_per_epoch = int(np.ceil(dtrain.shape[0]/batchSize))
+                        , validation_data = val_generator(dvalid, dvalid.target, batchSize)
+                        , validation_steps = int(np.ceil(dvalid.shape[0]/batchSize))
+                        , verbose=2
+                        )
+    batchSizeTst = 512
+    y_pred = model.predict_generator(
+                    tst_generator(dvalid.iloc[val_sorted_ix], batchSizeTst)
+                    , steps = int(np.ceil(dvalid.shape[0]*1./batchSizeTst))
+                    , max_queue_size=1 
+                    , verbose=1)[val_sorted_ix.argsort()]
+    
+    #pd.Series(y_pred.flatten()).hist()
+    #print("Model Evaluation Stage")
+    print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
 
 # Epoch1 - RMSE: 0.22369
 # Epoch2 - RMSE: 0.21817

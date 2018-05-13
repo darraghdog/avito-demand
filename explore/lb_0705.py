@@ -38,8 +38,8 @@ print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 traindf['activation_date'].value_counts()
 
 print('[{}] Create Validation Index'.format(time.time() - start_time))
-trnidx = (traindf.activation_date<=pd.to_datetime('2017-03-27')).values
-validx = (traindf.activation_date>=pd.to_datetime('2017-03-26')).values
+trnidx = (traindf.activation_date<=pd.to_datetime('2017-03-26')).values
+validx = (traindf.activation_date>=pd.to_datetime('2017-03-27')).values
 
 
 print('[{}] Combine Train and Test'.format(time.time() - start_time))
