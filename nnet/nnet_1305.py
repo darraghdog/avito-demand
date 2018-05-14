@@ -310,12 +310,12 @@ y_pred_epochs = []
 
 epochs = 3
 batchSize = 512
-#steps = (dtrain.shape[0]/batchSize+1)*epochs
-#lr_init, lr_fin = 0.0014, 0.00001
-#lr_decay  = (lr_init - lr_fin)/steps
+steps = (dtrain.shape[0]/batchSize+1)*epochs
+lr_init, lr_fin = 0.0014, 0.00001
+lr_decay  = (lr_init - lr_fin)/steps
 model = get_model()
-#K.set_value(model.optimizer.lr, lr_init)
-#K.set_value(model.optimizer.decay, lr_decay)
+K.set_value(model.optimizer.lr, lr_init)
+K.set_value(model.optimizer.decay, lr_decay)
 model.summary()
 
 y_pred_ls = []
@@ -341,4 +341,18 @@ for i in range(epochs):
         y_pred = sum(y_pred_ls)/len(y_pred_ls)
         print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
 
-# Epoch1 - RMSE: #0.2196 #0.2269
+# Epoch1 - RMSE: #0.2197 #0.2269
+        
+'''
+Epoch 1/1
+2492/2492 [==============================] - 176s 71ms/step - loss: 0.0516 - val_loss: 0.0484
+RMSE: 0.21995698136614084
+Epoch 1/1
+1246/1246 [==============================] - 115s 92ms/step - loss: 0.0457 - val_loss: 0.0488
+RMSE: 0.22096625909708964
+RMSE: 0.21936312353947515
+Epoch 1/1
+623/623 [==============================] - 106s 170ms/step - loss: 0.0413 - val_loss: 0.0503
+RMSE: 0.22422661611900513
+RMSE: 0.2197139177259413
+'''
