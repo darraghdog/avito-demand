@@ -1,3 +1,4 @@
+*.pkl
 *.bin
 *.vec
 *.gz
