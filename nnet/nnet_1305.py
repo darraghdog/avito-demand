@@ -69,7 +69,7 @@ print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
 
 print('[{}] Feature Engineering Price'.format(time.time() - start_time))
 col = "price"
-bins_ = 1000
+bins_ = 100
 df['emb_' + col] = pd.qcut(df[col], q = bins_, labels = False, duplicates = 'drop')
 common_prices = df[col].value_counts()[(df[col].value_counts())>600].index.tolist()
 idx_ = df[col].isin(common_prices)
@@ -95,7 +95,7 @@ def lowCtCat(col, cutoff = 20):
     var[~idx]    = 'locount'
     var.fillna('missing', inplace = True)
     return var.astype(str).values
-for col_, cut_ in [("user_id", 10), ("image_top_1", 10), ("item_seq_number", 100)]: 
+for col_, cut_ in [("user_id", 5), ("image_top_1", 5), ("item_seq_number", 100)]: 
     df[col_] = lowCtCat(col_, cutoff = cut_)
 for col_, cut_ in [('param_'+str(i+1), 20) for i in range(3)]: 
     df['cat_' + col_] = lowCtCat(col_, cutoff = cut_)
@@ -247,7 +247,7 @@ def tst_generator(dt, bsize):
 
 get_keras_data(df[:2])
 def get_model():
-    dr = 0.2
+    dr = 0.1
     ##Inputs
     title = Input(shape=[None], name="title")
     description = Input(shape=[None], name="description")
@@ -256,14 +256,14 @@ def get_model():
     emb_inputs = dict((col, Input(shape=[1], name = col))  for col in embed_szs.keys())
     emb_model  = dict((col, Embedding(col_szs[col]+1, emb_n)(emb_inputs[col])) for (col, emb_n) in embed_szs.items())
     fe = concatenate([(emb_) for emb_ in emb_model.values()])
-    fe = SpatialDropout1D(0.4)(fe)
-    #filter_sizes =  [4, 8]
-    #conv_layers = dict(( ('conv'+str(i), Conv1D(int(100/i), kernel_size=2**i, strides=1, padding='same', name = 'conv'+str(i))(s_dout)) for i in filter_sizes ))
-    #flatten_layers = dict((  ('flatten_conv'+str(i), s_dout(name = 'flatten_conv'+str(i))(conv_layers['conv'+str(i)])    )  for i in filter_sizes ))
+    #fe = SpatialDropout1D(dr)(fe)
+    #filter_sizes =  [2, 3]
+    #conv_layers = dict(( ('conv'+str(i), Conv1D(int(100/i), kernel_size=2**i, strides=1, padding='same', name = 'conv'+str(i))(fe)) for i in filter_sizes ))
+    #flatten_layers = dict((  ('flatten_conv'+str(i), conv_layers['conv'+str(i)]    )  for i in filter_sizes ))
     #flatten_conv = concatenate([(f_inp) for f_inp in flatten_layers.values()], name = 'concat_conv')
     
     #Embeddings layers
-    emb_size = 64
+    emb_size = 32
     emb_dsc = Embedding(MAX_DSC, emb_size)(description) 
     emb_ttl = Embedding(MAX_TTL, emb_size)(title) 
     #emb_dsc = GaussianDropout(dr)(emb_dsc)
@@ -281,16 +281,15 @@ def get_model():
         rnn_dsc
         , rnn_ttl
         , Flatten()(fe)
-        #, flatten_conv
     ])
     
     #main_l = BatchNormalization()(main_l)
     #main_l = Dropout(dr)(main_l)
-    main_l = Dense(64) (main_l)
+    main_l = Dense(32) (main_l)
     main_l = PReLU()(main_l)
     #main_l = BatchNormalization()(main_l)
     main_l = Dropout(dr)(main_l)
-    main_l = Dense(32) (main_l)
+    main_l = Dense(16) (main_l)
     main_l = PReLU()(main_l)
     #main_l = BatchNormalization()(main_l)
     main_l = Dropout(0.05)(main_l)
@@ -317,18 +316,20 @@ bags = 2
 val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
 y_pred_epochs = []
 
-epochs = 10
+epochs = 4
 batchSize = 512*2
 steps = (dtrain.shape[0]/batchSize+1)*epochs
-lr_init, lr_fin = 0.0008, 0.0001
+lr_init, lr_fin = 0.0014, 0.00001
 lr_decay  = (lr_init - lr_fin)/steps
 model = get_model()
 K.set_value(model.optimizer.lr, lr_init)
 K.set_value(model.optimizer.decay, lr_decay)
 model.summary()
 
-
+batchSize = 512*2
+y_pred_ls = []
 for i in range(epochs):
+    batchSize = (512*2 - (i*16))
     model.fit_generator(
                         trn_generator(dtrain, dtrain.target, batchSize)
                         , epochs=1
@@ -339,14 +340,14 @@ for i in range(epochs):
                         , verbose=1
                         )
     batchSizeTst = 256
-    y_pred = model.predict_generator(
+    y_pred_ls.append(model.predict_generator(
                     tst_generator(dvalid.iloc[val_sorted_ix], batchSizeTst)
                     , steps = int(np.ceil(dvalid.shape[0]*1./batchSizeTst))
                     , max_queue_size=1 
-                    , verbose=2)[val_sorted_ix.argsort()]
-    
-    #pd.Series(y_pred.flatten()).hist()
-    #print("Model Evaluation Stage")
-    print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
+                    , verbose=2)[val_sorted_ix.argsort()])
+    print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred_ls[-1].flatten())))
+    if len(y_pred_ls)>1:
+        y_pred = sum(y_pred_ls)/len(y_pred_ls)
+        print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
 
 # Epoch1 - RMSE: 0.2269
