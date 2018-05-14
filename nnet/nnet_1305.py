@@ -257,18 +257,11 @@ def get_model():
     emb_model  = dict((col, Embedding(col_szs[col]+1, emb_n)(emb_inputs[col])) for (col, emb_n) in embed_szs.items())
     fe = concatenate([(emb_) for emb_ in emb_model.values()])
     #fe = SpatialDropout1D(dr)(fe)
-    #filter_sizes =  [2, 3]
-    #conv_layers = dict(( ('conv'+str(i), Conv1D(int(100/i), kernel_size=2**i, strides=1, padding='same', name = 'conv'+str(i))(fe)) for i in filter_sizes ))
-    #flatten_layers = dict((  ('flatten_conv'+str(i), conv_layers['conv'+str(i)]    )  for i in filter_sizes ))
-    #flatten_conv = concatenate([(f_inp) for f_inp in flatten_layers.values()], name = 'concat_conv')
     
     #Embeddings layers
     emb_size = 32
     emb_dsc = Embedding(MAX_DSC, emb_size)(description) 
     emb_ttl = Embedding(MAX_TTL, emb_size)(title) 
-    #emb_dsc = GaussianDropout(dr)(emb_dsc)
-    #emb_ttl = GaussianDropout(dr)(emb_ttl)
-
     
     # GRU Layer
     rnn_dsc = GRU(emb_size, recurrent_dropout=0.0) (emb_dsc)
@@ -312,24 +305,22 @@ dtrain['target'] = y[trnidx].values
 dvalid['target'] = y[validx].values
 
 
-bags = 2
 val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
 y_pred_epochs = []
 
-epochs = 4
-batchSize = 512*2
-steps = (dtrain.shape[0]/batchSize+1)*epochs
-lr_init, lr_fin = 0.0014, 0.00001
-lr_decay  = (lr_init - lr_fin)/steps
+epochs = 3
+batchSize = 512
+#steps = (dtrain.shape[0]/batchSize+1)*epochs
+#lr_init, lr_fin = 0.0014, 0.00001
+#lr_decay  = (lr_init - lr_fin)/steps
 model = get_model()
-K.set_value(model.optimizer.lr, lr_init)
-K.set_value(model.optimizer.decay, lr_decay)
+#K.set_value(model.optimizer.lr, lr_init)
+#K.set_value(model.optimizer.decay, lr_decay)
 model.summary()
 
-batchSize = 512*2
 y_pred_ls = []
 for i in range(epochs):
-    batchSize = (512*2 - (i*16))
+    batchSize = 512*(2**i)
     model.fit_generator(
                         trn_generator(dtrain, dtrain.target, batchSize)
                         , epochs=1
@@ -350,4 +341,4 @@ for i in range(epochs):
         y_pred = sum(y_pred_ls)/len(y_pred_ls)
         print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
 
-# Epoch1 - RMSE: 0.2269
+# Epoch1 - RMSE: #0.2196 #0.2269
