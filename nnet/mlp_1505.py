@@ -75,8 +75,9 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     df['price_cut'] = (np.log1p(df['price'])*5).fillna(150).astype(np.int32)
     df['item_seq_number_cut'] = (np.log1p(df['item_seq_number'])*5).fillna(150).astype(np.int32)
     df['user']   = common_users(df['user_id'], 'user_id')
+    df['image_top_1'] = df['image_top_1'].fillna(3100).astype(str)
     return df[['name', 'text', 'user', 'region', 'city', 'item_seq_number_cut' \
-               , 'user_type', 'price_cut']]
+               , 'user_type', 'price_cut', 'image_top_1']]
 
 def on_field(f: str, *vec) -> Pipeline:
     return make_pipeline(FunctionTransformer(itemgetter(f), validate=False), *vec)
@@ -96,8 +97,8 @@ def fit_predict(xs, y_train) -> np.ndarray:
         out = ks.layers.Dense(64, activation='relu')(out)
         out = ks.layers.Dense(1)(out)
         model = ks.Model(model_in, out)
-        model.compile(loss='mean_squared_error', optimizer=ks.optimizers.Adam(lr=3e-3))
-        for i in range(3):
+        model.compile(loss='mean_squared_error', optimizer=ks.optimizers.Adam(lr=1e-3))#(lr=3e-3))
+        for i in range(1):
             with timer(f'epoch {i + 1}'):
                 model.fit(x=X_train, y=y_train, batch_size=2**(11 + i), epochs=1, verbose=0)
         return model.predict(X_test)[:, 0]
@@ -107,18 +108,12 @@ def main():
         on_field('name', Tfidf(max_features=100000, token_pattern='\w+')),
         on_field('user', Tfidf(max_features=100000, token_pattern='\w+')),
         on_field('text', Tfidf(max_features=100000, token_pattern='\w+', ngram_range=(1, 2))),
-        on_field(['region', 'city', 'user_type', 'price_cut', 'item_seq_number_cut'],
+        on_field(['region', 'city', 'user_type', 'price_cut', 'item_seq_number_cut', 'image_top_1'],
                  FunctionTransformer(to_records, validate=False), DictVectorizer()),
         n_jobs=4)
     y_scaler = StandardScaler()
     with timer('process train'):
         train, valid, y_train, y_valid = load_data()
-        #train = pd.read_table('../input/train.tsv')
-        #train = train[train['price'] > 0].reset_index(drop=True)
-        #cv = KFold(n_splits=20, shuffle=True, random_state=42)
-        #train_ids, valid_ids = next(cv.split(train))
-        #train, valid = train.iloc[train_ids], train.iloc[valid_ids]
-        #y_train = y_scaler.fit_transform(np.log1p(train['price'].values.reshape(-1, 1)))
         y_train = y_train.values
         X_train = vectorizer.fit_transform(preprocess(train)).astype(np.float32)
         print(f'X_train: {X_train.shape} of {X_train.dtype}')
@@ -129,9 +124,10 @@ def main():
         Xb_train, Xb_valid = [x.astype(np.bool).astype(np.float32) for x in [X_train, X_valid]]
         xs = [[Xb_train, Xb_valid], [X_train, X_valid]] * 2
         y_pred = np.mean(pool.map(partial(fit_predict, y_train=y_train), xs), axis=0)
-    #y_pred = np.expm1(y_scaler.inverse_transform(y_pred.reshape(-1, 1))[:, 0])
-    #y_pred = y_scaler.inverse_transform(y_pred.reshape(-1, 1))[:, 0]
     print('Valid RMSE: {:.4f}'.format(np.sqrt(metrics.mean_squared_error(y_valid.values, y_pred))) )
 
 if __name__ == '__main__':
     main()
+    
+# Valid RMSE: 0.2212 - 1 epochs (lr=2e-3))
+# [fit_predict] done in 1240 s
