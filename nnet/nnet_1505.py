@@ -1,5 +1,4 @@
 # https://www.kaggle.com/darraghdog/mem-check-1002-ftrlrnnverified
-
 # Models Packages
 from sklearn import metrics
 from sklearn.metrics import mean_squared_error
@@ -21,8 +20,6 @@ from nltk.stem import PorterStemmer
 import multiprocessing as mp
 from collections import Counter
 from keras.preprocessing.sequence import pad_sequences
-
-
 import random
 from keras.layers import Input, Dropout, Dense, BatchNormalization, \
     Activation, concatenate, GRU, CuDNNGRU, Embedding, Flatten, Bidirectional, \
@@ -37,7 +34,7 @@ from keras.utils import plot_model
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
-path = '/Users/dhanley2/Documents/avito/data/'
+#path = '/Users/dhanley2/Documents/avito/data/'
 
 # path = '/home/ubuntu/avito/data/'
 start_time = time.time()
@@ -100,7 +97,9 @@ df['text_feat'] = df.apply(lambda row: ' '.join([
     str(row['param_3'])]),axis=1) # Group Param Features
 for col in ['title', 'description', 'text_feat']:
     df[col] = df[col].str.lower()
-df['description'] = df['title'].fillna('misst') + ' ' + df['text_feat'].fillna('missp') + ' ' + df['description'].fillna('missd')
+df['description'] = df['title'].fillna('missd') + ' ' + df["parent_category_name"].fillna('') + ' ' \
+                    + df["category_name"].fillna('') + ' ' + df['text_feat'].fillna('') + \
+                    ' ' + df['description'].fillna('')
 
 print('[{}] Categoricals with some low counts'.format(time.time() - start_time))
 def lowCtCat(col, cutoff = 20):
@@ -116,8 +115,7 @@ for col_, cut_ in [("user_id", 5), ("image_top_1", 30), ("item_seq_number", 100)
     df[col_] = lowCtCat(col_, cutoff = cut_)
 for col_, cut_ in [('param_'+str(i+1), 20) for i in range(3)]: 
     df['cat_' + col_] = lowCtCat(col_, cutoff = cut_)
-    
-df.head()
+
 
 print('[{}] Encode Variables'.format(time.time() - start_time))
 embed_me = ["emb_item_seq_number", "user_id","image_top_1", "region", 'city', "emb_week_of_year", 'emb_price', \
@@ -128,19 +126,17 @@ for col in embed_me:
     lbl = preprocessing.LabelEncoder()
     df[col] = lbl.fit_transform(df[col].astype(str))
 
+print('[{}] Scale Variables'.format(time.time() - start_time))
+scl = StandardScaler()
+for col in df.columns:
+    if 'cont_' in col:
+        print('Scale %s'%(col))
+        df[col] = scl.fit_transform(df[col].values.reshape(-1, 1)).flatten()
+
 print('[{}] Embedding dimensions'.format(time.time() - start_time))
 col_szs = dict((col, df[col].unique().shape[0]) for col in embed_me)
 embed_szs = dict((col, int(np.ceil(np.log(col_szs[col])))+1) for col in embed_me)
 embed_szs
-
-'''
-print('[{}] Text Features'.format(time.time() - start_time))
-df['text_feat'] = df.apply(lambda row: ' '.join([
-    str(row['param_1']), 
-    str(row['param_2']), 
-    str(row['param_3'])]),axis=1) # Group Param Features
-df.drop(["param_1","param_2","param_3"],axis=1,inplace=True)
-'''
 
 print('[{}] Encode Sentences'.format(time.time() - start_time))
 toktok = ToktokTokenizer()
@@ -195,24 +191,25 @@ df["title"]       = fit_sequence(df.title, tok_raw_ttl)
 df["description"] = fit_sequence(df.description, tok_raw_dsc)    
 df["title"]       = [l if len(l)>0 else [0] for l in df["title"]]
 gc.collect()
-df["ttllen"] = [len(l) for l in df["title"]]
-df["dsclen"] = [len(l) for l in df["description"]]
 
 MAX_DSC = max(tok_raw_dsc.values())+1
 MAX_TTL = max(tok_raw_ttl.values())+1
 
 bin_cols = [c for c in df.columns if 'bin_no' in c]
+cont_cols = [c for c in df.columns if 'cont_' in c]
+
 
 def get_keras_data(dataset):
     X = {
         'title': pad_sequences(dataset.title, 
                               maxlen=max([len(l) for l in dataset.title]))
         ,'description': pad_sequences(dataset.description, 
-                              maxlen=max([len(l) for l in dataset.description]))
+                              maxlen=min(300, max([len(l) for l in dataset.description])))
     }
     for col in embed_szs.keys():
         X[col] = dataset[col].values
     X['bin_vars'] = dataset[bin_cols].values
+    X['cont_vars'] = dataset[cont_cols].values
     return X   
 
 def map_sort(seq1, seq2):
@@ -274,6 +271,8 @@ def get_model():
     
     # Binary Inputs
     bin_vars = Input(shape= [len(bin_cols)], name = 'bin_vars')
+    ## Continuous Inputs
+    cont_vars = Input(shape= [len(cont_cols)], name = 'cont_vars')
     
     #Embeddings layers
     emb_size = 32
@@ -283,19 +282,16 @@ def get_model():
     # GRU Layer
     rnn_dsc = GRU(emb_size, recurrent_dropout=0.0) (emb_dsc)
     rnn_ttl = GRU(emb_size, recurrent_dropout=0.0) (emb_ttl)
-    #rnn_dsc = CuDNNGRU(16) (emb_dsc)
-    #rnn_ttl = CuDNNGRU(16) (emb_ttl)
     
     #main layer
     main_l = concatenate([
         rnn_dsc
         , rnn_ttl
         , Flatten()(fe)
-        , bin_vars 
+        , bin_vars
+        #, cont_vars
     ])
     
-    #main_l = BatchNormalization()(main_l)
-    #main_l = Dropout(dr)(main_l)
     main_l = Dense(32) (main_l)
     main_l = PReLU()(main_l)
     #main_l = BatchNormalization()(main_l)
@@ -309,7 +305,7 @@ def get_model():
     output = Dense(1,activation="linear") (main_l)
     
     #model
-    model = Model([title, description] + [inp for inp in emb_inputs.values()] + [bin_vars], output)
+    model = Model([title, description] + [inp for inp in emb_inputs.values()] + [bin_vars] + [cont_vars], output)
     optimizer = optimizers.Adam()
     model.compile(loss='mse', 
                   optimizer=optimizer)
@@ -318,11 +314,14 @@ def get_model():
 
 dtrain = df.loc[traindex,:][trnidx].reset_index()
 dvalid = df.loc[traindex,:][validx].reset_index()
-dtrain['target'] = y_scl[trnidx].values #y[trnidx].values
+dtest  = df.loc[testdex,:].reset_index()
+dtrain['target'] = y[trnidx].values
 dvalid['target'] = y[validx].values
 
 
 val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
+tst_sorted_ix = np.array(map_sort(dtest ["title"].tolist(), dtest ["description"].tolist()))
+
 y_pred_epochs = []
 
 epochs = 2
@@ -330,42 +329,56 @@ batchSize = 512
 steps = (dtrain.shape[0]/batchSize+1)*epochs
 lr_init, lr_fin = 0.0014, 0.00001
 lr_decay  = (lr_init - lr_fin)/steps
-model = get_model()
-K.set_value(model.optimizer.lr, lr_init)
-K.set_value(model.optimizer.decay, lr_decay)
-model.summary()
 
+bags      = 3
 y_pred_ls = []
-for i in range(epochs):
-    batchSize = 512*(2**i)
-    model.fit_generator(
-                        trn_generator(dtrain, dtrain.target, batchSize)
-                        , epochs=1
-                        , max_queue_size=1
-                        , steps_per_epoch = int(np.ceil(dtrain.shape[0]/batchSize))
-                        , validation_data = val_generator(dvalid, dvalid.target, batchSize)
-                        , validation_steps = int(np.ceil(dvalid.shape[0]/batchSize))
-                        , verbose=1
-                        )
-    batchSizeTst = 256
-    y_pred_ls.append(model.predict_generator(
-                    tst_generator(dvalid.iloc[val_sorted_ix], batchSizeTst)
-                    , steps = int(np.ceil(dvalid.shape[0]*1./batchSizeTst))
-                    , max_queue_size=1 
-                    , verbose=2)[val_sorted_ix.argsort()])
-    print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred_ls[-1].flatten())))
-    if len(y_pred_ls)>1:
-        y_pred = sum(y_pred_ls)/len(y_pred_ls)
-        print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
-
+y_sub_ls  = []
+for b in range(bags):
+    model = get_model()
+    K.set_value(model.optimizer.lr, lr_init)
+    K.set_value(model.optimizer.decay, lr_decay)
+    #model.summary()
+    for i in range(epochs):
+        batchSize = 512*(2**i)
+        model.fit_generator(
+                            trn_generator(dtrain, dtrain.target, batchSize)
+                            , epochs=1
+                            , max_queue_size=1
+                            , steps_per_epoch = int(np.ceil(dtrain.shape[0]/batchSize))
+                            , validation_data = val_generator(dvalid, dvalid.target, batchSize)
+                            , validation_steps = int(np.ceil(dvalid.shape[0]/batchSize))
+                            , verbose=1
+                            )
+        batchSizeTst = 256
+        y_pred_ls.append(model.predict_generator(
+                        tst_generator(dvalid.iloc[val_sorted_ix], batchSizeTst)
+                        , steps = int(np.ceil(dvalid.shape[0]*1./batchSizeTst))
+                        , max_queue_size=1 
+                        , verbose=2)[val_sorted_ix.argsort()])
+        y_sub_ls.append(model.predict_generator(
+                        tst_generator(dtest .iloc[tst_sorted_ix], batchSizeTst)
+                        , steps = int(np.ceil(dtest.shape[0]*1./batchSizeTst))
+                        , max_queue_size=1 
+                        , verbose=2)[tst_sorted_ix.argsort()])
+        print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred_ls[-1].flatten())))
+        if len(y_pred_ls)>1:
+            y_pred = sum(y_pred_ls)/len(y_pred_ls)
+            print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
+y_sub = sum(y_sub_ls)/len(y_sub_ls)
+rnnsub = pd.DataFrame(y_sub,columns=["deal_probability"],index=testdex)
+rnnsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
+rnnsub.to_csv("../sub/nnsub_1505.csv.gz",index=True,header=True, compression = 'gzip')
+print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
+print("Notebook Runtime: %0.2f Minutes"%((time.time() - notebookstart)/60))
 # Epoch1 - RMSE: #0.21909
         
 '''
 Epoch 1/1
-2492/2492 [==============================] - 260s 104ms/step - loss: 0.0513 - val_loss: 0.0482
-RMSE: 0.21955623870059504
+2492/2492 [==============================] - 183s 73ms/step - loss: 0.0513 - val_loss: 0.0480
+RMSE: 0.21909492575923323
 Epoch 1/1
-1246/1246 [==============================] - 231s 185ms/step - loss: 0.0455 - val_loss: 0.0485
-RMSE: 0.2201353595120743
-RMSE: 0.21878898384318965
+1246/1246 [==============================] - 195s 156ms/step - loss: 0.0454 - val_loss: 0.0483
+RMSE: 0.21967805890427936
+RMSE: 0.2183885338180932
+Bagged 3 times RMSE: 0.2177
 '''
