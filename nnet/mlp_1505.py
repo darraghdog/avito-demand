@@ -31,9 +31,9 @@ def timer(name):
     
 def load_data():
     print('[{}] Load Train/Test'.format(time.time() - start_time))
-    traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')[:200000]
+    traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
     traindex = traindf.index
-    testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", parse_dates = ["activation_date"])[:100000]
+    testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", parse_dates = ["activation_date"])
     testdex = testdf.index
     y = traindf.deal_probability.copy()
     traindf.drop("deal_probability",axis=1, inplace=True)
@@ -131,7 +131,7 @@ def main():
         y_pred = np.mean(pool.map(partial(fit_predict, y_train=y_train), xs), axis=0)
     #y_pred = np.expm1(y_scaler.inverse_transform(y_pred.reshape(-1, 1))[:, 0])
     #y_pred = y_scaler.inverse_transform(y_pred.reshape(-1, 1))[:, 0]
-    print('Valid RMSE: {:.4f}'.format(np.sqrt(metrics.mean_squared_error(y_valid.values, y_pred))))
+    print('Valid RMSE: {:.4f}'.format(np.sqrt(metrics.mean_squared_error(y_valid.values, y_pred))) )
 
 if __name__ == '__main__':
     main()

@@ -316,7 +316,6 @@ def get_model():
     
     return model
 
-
 dtrain = df.loc[traindex,:][trnidx].reset_index()
 dvalid = df.loc[traindex,:][validx].reset_index()
 dtrain['target'] = y_scl[trnidx].values #y[trnidx].values
