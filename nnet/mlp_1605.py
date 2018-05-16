@@ -29,7 +29,7 @@ def timer(name):
     yield
     print(f'[{name}] done in {time.time() - t0:.0f} s')
     
-def load_data():
+def load_data(full):
     print('[{}] Load Train/Test'.format(time.time() - start_time))
     traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
     traindex = traindf.index
@@ -39,23 +39,25 @@ def load_data():
     traindf.drop("deal_probability",axis=1, inplace=True)
     print('Train shape: {} Rows, {} Columns'.format(*traindf.shape))
     print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
-    traindf['activation_date'].value_counts()
-    traindf.head()
     
     print('[{}] Create Validation Index'.format(time.time() - start_time))
-    trnidx = (traindf.activation_date<=pd.to_datetime('2017-03-26')).values
-    validx = (traindf.activation_date>=pd.to_datetime('2017-03-27')).values
+    if full:
+        trnidx = (traindf.activation_date<=pd.to_datetime('2017-03-28')).values
+        validx = (traindf.activation_date>=pd.to_datetime('2017-03-29')).values
+    else:
+        trnidx = (traindf.activation_date<=pd.to_datetime('2017-03-26')).values
+        validx = (traindf.activation_date>=pd.to_datetime('2017-03-27')).values
     
     print('[{}] Combine Train and Test'.format(time.time() - start_time))
     df = pd.concat([traindf,testdf],axis=0)
     df['idx'] = range(df.shape[0])
-    del traindf,testdf
-    gc.collect()
     print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))  
     
     dtrain = df.loc[traindex,:][trnidx].reset_index()
     dvalid = df.loc[traindex,:][validx].reset_index()
-    return dtrain, dvalid, y[trnidx], y[validx]
+    dtest  = df.loc[testdex,:][validx].reset_index()
+    
+    return dtrain, dvalid, dtest, y[trnidx], y[validx]
 
 
 def common_users(varin, col, cutoff = 3):
@@ -72,13 +74,17 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     df['text']      = (df['description'].fillna('') + ' ' + df['title'] + ' ' \
       + df['parent_category_name'].fillna('') + ' ' + df['category_name'].fillna('') \
       + df['param_1'].fillna('') + df['param_2'].fillna('') + df['param_3'].fillna(''))
-    df['price_cut'] = (np.log1p(df['price'])*5).fillna(150).astype(np.int32)
-    df['item_seq_number_cut'] = (np.log1p(df['item_seq_number'])*5).fillna(150).astype(np.int32)
-    df['user']   = common_users(df['user_id'], 'user_id')
-    df['image_top_1'] = df['image_top_1'].fillna(3100).astype(str)
-    df['param_1'] = df['param_1'].fillna('')
-    df['param_2'] = df['param_2'].fillna('')
-    df['param_3'] = df['param_3'].fillna('')
+    df['price_cut'] = 'pc_'+(np.log1p(df['price'])*5).fillna(150).astype(np.int32).astype(str)
+    df['item_seq_number_cut'] = 'is_'+(np.log1p(df['item_seq_number'])*5).fillna(150).astype(np.int32).astype(str)
+    df['user']    = common_users(df['user_id'], 'user_id')
+    df['image_top_1'] = 'img_'+ df['image_top_1'].fillna(3100).astype(str)
+    df['region']  = 'rgn_'+ df['region'].fillna('').astype(str)
+    df['city']    = df['city'].fillna('').astype(str)
+    df['param_1'] = 'p1_'+ df['param_1'].fillna('').astype(str)
+    df['param_2'] = 'p2_'+ df['param_2'].fillna('').astype(str)
+    df['param_3'] = 'p3_'+ df['param_3'].fillna('').astype(str)
+    df['parent_category_name'] = 'pc1_'+ df['parent_category_name'].fillna('').astype(str)
+    df['category_name'] = 'c2_'+ df['category_name'].fillna('').astype(str)
     return df[['name', 'text', 'user', 'region', 'city', 'item_seq_number_cut' \
                , 'user_type', 'price_cut', 'image_top_1', 'param_1', 'param_3', 'param_3']]
 
@@ -95,34 +101,38 @@ def fit_predict(xs, y_train) -> np.ndarray:
     with tf.Session(graph=tf.Graph(), config=config) as sess, timer('fit_predict'):
         ks.backend.set_session(sess)
         model_in = ks.Input(shape=(X_train.shape[1],), dtype='float32', sparse=True)
-        out = ks.layers.Dense(192*2, activation='relu')(model_in)
+        out = ks.layers.Dense(192, activation='relu')(model_in)
+        #out = ks.layers.Dense(512, activation='relu')(model_in)
         out = ks.layers.Dense(64, activation='relu')(out)
         out = ks.layers.Dense(64, activation='relu')(out)
         out = ks.layers.Dense(1)(out)
         model = ks.Model(model_in, out)
-        model.compile(loss='mean_squared_error', optimizer=ks.optimizers.Adam(lr=1e-3))#(lr=3e-3))
+        model.compile(loss='mean_squared_error', optimizer=ks.optimizers.Adam(lr=1e-3))#(lr=1e-3))
         for i in range(1):
             with timer(f'epoch {i + 1}'):
                 model.fit(x=X_train, y=y_train, batch_size=2**(11 + i), epochs=1, verbose=1)
         return model.predict(X_test)[:, 0]
 
-def main():
+def main(full = False):
     vectorizer = make_union(
+        #on_field('user', Tfidf(max_features=100000 , token_pattern='\w+')), #100000
         on_field('name', Tfidf(max_features=15000 , token_pattern='\w+')), #100000
         on_field('text', Tfidf(max_features=60000, token_pattern='\w+', ngram_range=(1, 2))), #100000
-        on_field(['region', 'city', 'user_type', 'price_cut', 'item_seq_number_cut', 'image_top_1', \
-                  'param_1', 'param_3', 'param_3', 'user'],
+        on_field(['region', 'city', 'price_cut', 'item_seq_number_cut', 'image_top_1', \
+                  'param_1', 'param_3', 'param_3', 'user_type', 'user'],
                  FunctionTransformer(to_records, validate=False), DictVectorizer()),
         n_jobs=4)
     y_scaler = StandardScaler()
     with timer('process train'):
-        train, valid, y_train, y_valid = load_data()
+        train, valid, test, y_train, y_valid = load_data(full)
         y_train = y_train.values
         X_train = vectorizer.fit_transform(preprocess(train)).astype(np.float32)
         print(f'X_train: {X_train.shape} of {X_train.dtype}')
         del train
     with timer('process valid'):
         X_valid = vectorizer.transform(preprocess(valid)).astype(np.float32)
+        if full:
+            X_test = vectorizer.transform(preprocess(test)).astype(np.float32)
     with ThreadPool(processes=4) as pool:
         Xb_train, Xb_valid = [x.astype(np.bool).astype(np.float32) for x in [X_train, X_valid]]
         xs = [[Xb_train, Xb_valid], [X_train, X_valid]] * 2
@@ -130,8 +140,8 @@ def main():
     print('Valid RMSE: {:.4f}'.format(np.sqrt(metrics.mean_squared_error(y_valid.values, y_pred))) )
 
 if __name__ == '__main__':
-    main()
+    main(full = True)
     
-# Valid RMSE: 0.2199 - 1 epochs (lr=1e-3))
-# [fit_predict] done in 1240 s
-# Valid RMSE: 0.2200 - 1 epoch 507s with smaller max feat - 15K/60K
+# Valid RMSE: 0.2171 - 1 epochs (lr=1e-3)) [fit_predict] done in 657 s
+# Valid RMSE: 0.2170 - 1 epochs (lr=1e-3)) [fit_predict] done in 2044 s - top layer at 512
+# Valid RMSE: 0.2170
