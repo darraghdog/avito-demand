@@ -157,7 +157,7 @@ if __name__ == '__main__':
         lbsub = pd.read_csv("../sub/blend06.csv")
         blend_lb = lbsub.copy()
         blend_lb['deal_probability'] = mlpsub['deal_probability'].values*0.4 + lbsub['deal_probability'].values*0.6
-        blend_lb.to_csv("../sub/mlpblend_1605.csv.gz",index=True,header=True, compression = 'gzip')
+        blend_lb.to_csv("../sub/mlpblend_1605.csv.gz",index=False,header=True, compression = 'gzip')
 
     
 # Valid RMSE: 0.2171 - 1 epochs (lr=1e-3)) [fit_predict] done in 657 s

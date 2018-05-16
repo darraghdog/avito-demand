@@ -204,7 +204,7 @@ def get_keras_data(dataset):
         'title': pad_sequences(dataset.title, 
                               maxlen=max([len(l) for l in dataset.title]))
         ,'description': pad_sequences(dataset.description, 
-                              maxlen=min(300, max([len(l) for l in dataset.description])))
+                              maxlen=max([len(l) for l in dataset.description]))
     }
     for col in embed_szs.keys():
         X[col] = dataset[col].values
