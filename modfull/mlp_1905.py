@@ -31,12 +31,15 @@ def timer(name):
     
 def load_data(full):
     print('[{}] Load Train/Test'.format(time.time() - start_time))
-    traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
+    traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", \
+                          parse_dates = ["activation_date"], compression = 'zip')
     traindex = traindf.index
-    testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", parse_dates = ["activation_date"])
+    testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", \
+                         parse_dates = ["activation_date"])
     testdex = testdf.index
     featusrttl = pd.read_csv(path + '../features/user_agg.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
     featusrcat = pd.read_csv(path + '../features/usercat_agg.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+    featusrprd = pd.read_csv(path + '../features/user_activ_period_stats.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
     y = traindf.deal_probability.copy()
     traindf.drop("deal_probability",axis=1, inplace=True)
     print('Train shape: {} Rows, {} Columns'.format(*traindf.shape))
@@ -59,8 +62,9 @@ def load_data(full):
     keep = ['user_id', 'parent_category_name', 'usercat_avg_price', 'usercat_ad_ct']
     gc.collect()
     df = df.reset_index().merge(featusrcat[keep], on = ['user_id', 'parent_category_name']).set_index('item_id')
-    keep = ['user_id', 'user_activ_sum', 'user_activ_len', 'user_activ_var']
+    keep = ['user_id', 'user_activ_sum']
     gc.collect()
+    df = df.reset_index().merge(featusrprd[keep], on = ['user_id'], how = 'left').set_index('item_id')
     print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))  
     
     dtrain = df.loc[traindex,:][trnidx].reset_index()
@@ -89,6 +93,8 @@ def preprocess(mult, df: pd.DataFrame) -> pd.DataFrame:
     df['user_ad_ct'] = 'uac_'+(np.log1p(df['user_ad_ct'])*mult).fillna(10000).astype(np.int32).astype(str)
     df['usercat_ad_ct'] = 'ucac_'+(np.log1p(df['usercat_ad_ct'])*mult).fillna(10000).astype(np.int32).astype(str)
     df['item_seq_number_cut'] = 'is_'+(np.log1p(df['item_seq_number'])*mult).fillna(150).astype(np.int32).astype(str)
+    df['user_activ_sum'] = 'is_'+(np.log1p(df['user_activ_sum'])*mult).fillna(150).astype(np.int32).astype(str)
+
     df['user']    = common_users(df['user_id'], 'user_id')
     df['image_top_1'] = 'img_'+ df['image_top_1'].fillna(3100).astype(str)
     df['region']  = 'rgn_'+ df['region'].fillna('').astype(str)
@@ -100,7 +106,7 @@ def preprocess(mult, df: pd.DataFrame) -> pd.DataFrame:
     df['category_name'] = 'c2_'+ df['category_name'].fillna('').astype(str)
     return df[['name', 'text', 'user', 'region', 'city', 'item_seq_number_cut', 'all_titles', 'user_avg_price_cut'\
                , 'user_type', 'price_cut', 'image_top_1', 'param_1', 'param_3', 'param_3', 'user_ad_ct'\
-               , 'usercat_avg_price_cut', 'usercat_ad_ct']] 
+               , 'usercat_avg_price_cut', 'usercat_ad_ct', 'user_activ_sum']] 
 
 def on_field(f: str, *vec) -> Pipeline:
     return make_pipeline(FunctionTransformer(itemgetter(f), validate=False), *vec)
@@ -134,8 +140,9 @@ def main(full = False):
             on_field('all_titles', Tfidf(max_features=sza , token_pattern='\w+')), #100000
             #on_field('user_categories', Tfidf(max_features=10000 , token_pattern='\w+')), #100000
             on_field('text',       Tfidf(max_features=szt, token_pattern='\w+', ngram_range=(1, 2))), #100000
-            on_field(['region', 'city', 'price_cut', 'item_seq_number_cut', 'image_top_1', 'user_avg_price_cut', \
-                      'param_1', 'param_3', 'param_3', 'user_type', 'user', 'user_ad_ct'], 
+        on_field(['region', 'city', 'price_cut', 'item_seq_number_cut', 'image_top_1', 'user_avg_price_cut', \
+                  'param_1', 'param_3', 'param_3', 'user_type', 'user', 'user_ad_ct', \
+                  'usercat_avg_price_cut', 'usercat_ad_ct', 'user_activ_sum'],
                      FunctionTransformer(to_records, validate=False), DictVectorizer()),
             n_jobs=4)
     vectorizer1 = vectorizerfn(15000, 80000, 60000)
@@ -172,20 +179,31 @@ def main(full = False):
     return y_pred, tstdex
 
 if __name__ == '__main__':
-    full = False
+    full = True
     y_pred, idx = main(full)
     if full: 
         mlpsub = pd.DataFrame(y_pred,columns=["deal_probability"],index=idx)
         mlpsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
-        mlpsub.to_csv("../sub/mlpsub_1805.csv.gz",index=True,header=True, compression = 'gzip')
+        mlpsub.to_csv("../sub/mlpsub_1905.csv.gz",index=True,header=True, compression = 'gzip')
         print("All done")
         lbsub = pd.read_csv("../sub/blend06.csv")
         blend_lb = lbsub.copy()
         blend_lb['deal_probability'] = mlpsub['deal_probability'].values*0.5 + lbsub['deal_probability'].values*0.5
-        blend_lb.to_csv("../sub/mlpblend_1805.csv.gz",index=False,header=True, compression = 'gzip')
+        blend_lb.to_csv("../sub/mlpblend_1905.csv.gz",index=False,header=True, compression = 'gzip')
+        print("get previous done")
+        mlpsub_b4 = pd.read_csv("../sub/mlpsub_1705.csv.gz", compression = 'gzip')
+        lbsub = pd.read_csv("../sub/blend06.csv")
+        blend_lb = lbsub.copy()
+        blend_lb['deal_probability'] = mlpsub['deal_probability'].values*0.25 + \
+                                        mlpsub_b4['deal_probability'].values*0.25 + \
+                                            lbsub['deal_probability'].values*0.5
+        blend_lb.to_csv("../sub/mlpblend_1905.csv.gz",index=False,header=True, compression = 'gzip')
 
-    
+        
 # Valid RMSE: 0.2166 ... all_titles bigram 60K
 # Valid RMSE: 0.2165 ... avg price per user
 # Valid RMSE: 0.2163 ... user Ad ct
 # Valid RMSE: 0.2162 ... Parent category average price, count
+# Valid RMSE: 0.2160 ... bag different models
+# Valid RMSE: 0.2160 ... bag different models
+# Valid RMSE: 0.2159 ... adding period sum
