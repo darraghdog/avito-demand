@@ -40,7 +40,7 @@ def process_batch(img_ls):
     return block5_pool_features
 
 batch_size = 512*4
-os.chdir('/home/darragh/avito/imgfeatures/tmp1')
+os.chdir(path+'../imgfeatures/tmp')
 for file_ in ['train_jpg']: # ,'test_jpg', 
     file_ls   = []
     csr_ls    = [] 
