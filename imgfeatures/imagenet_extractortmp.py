@@ -31,7 +31,6 @@ from keras.models import Model
 # Params
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
-path = "/home/ubuntu/avito/data/"
 #base_model = VGG19(weights='imagenet')
 #base_model = InceptionV3(weights='imagenet')
 base_model = MobileNet(weights='imagenet')
@@ -51,9 +50,9 @@ def process_batch(img_ls):
     pool_features = sparse.csr_matrix(pool_features, dtype=np.float32)
     return pool_features
 
-batch_size = 512*16
-os.chdir(path + '../imgfeatures/tmp')
-for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg', 
+batch_size = 512*8
+os.chdir('/home/darragh/avito/imgfeatures/tmp')
+for file_ in ['test_jpg']: # ,'test_jpg', 
     file_ls   = []
     csr_ls    = [] 
     myzip = zipfile.ZipFile(path + '%s.zip'%(file_)) # zipfile.ZipFile('../input/avito-demand-prediction/train_jpg.zip')
@@ -86,10 +85,16 @@ for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg',
     gc.collect()
     del mattst, file_ls, csr_ls
     gc.collect()
-
-
+'''
+# Check reload
+gc.collect()
+fnamemat = path + '../features/mobilenet_pool_mat_%s'%(file_)
+fnamefls = path + '../features/mobilenet_pool_fls_%s'%(file_)
+file_ls = pickle.load( open(fnamefls_tst, 'rb' ))
+mattst = sparse.load_npz(fnamemat_tst)
+'''
 for file_ in ['test', 'train']: # ,'test_jpg',
-    fnamemat = path + '../features/mobilenet_pool_mat_%s_jpg.npz'%(file_)
+    fnamemat = path + '../features/mobilenet_pool_mat_%s_jpg'%(file_)
     fnamefls = path + '../features/mobilenet_pool_fls_%s_jpg'%(file_)
     file_ls = pickle.load( open(fnamefls, 'rb' ))
     mattst = sparse.load_npz(fnamemat)
@@ -102,11 +107,9 @@ for file_ in ['test', 'train']: # ,'test_jpg',
     fseqidx = df.loc[fseq].idx.values
 
     # Full sparse matrix test file
-    allmat = sparse.lil_matrix((df.shape[0], mattst.shape[1]), dtype=np.float32)
+    allmat = sparse.lil_matrix((testdf.shape[0], mattst.shape[1]), dtype=np.float32)
     print(allmat[fseqidx].shape)
     print(mattst.shape)
     allmat[fseqidx] = mattst
-    allmat = allmat.tocsr()
     fname = path + '../features/mobilenet_pool_array_%s'%(file_)
-    sparse.save_npz(fname, allmat)
-
+    sparse.save_npz(fname, alltst)

@@ -22,6 +22,9 @@ import tensorflow as tf
 
 from keras.applications.vgg19 import VGG19
 from keras.applications.inception_v3 import InceptionV3
+from keras.applications.inception_resnet_v2 import InceptionResNetV2
+from keras.applications.densenet import DenseNet121
+
 from keras.applications.mobilenet import MobileNet
 from keras.preprocessing import image
 from keras.applications.vgg19 import preprocess_input
@@ -34,30 +37,31 @@ path = "/home/darragh/avito/data/"
 path = "/home/ubuntu/avito/data/"
 #base_model = VGG19(weights='imagenet')
 #base_model = InceptionV3(weights='imagenet')
-base_model = MobileNet(weights='imagenet')
+base_model = DenseNet121(weights='imagenet')
+#base_model = MobileNet(weights='imagenet')
 
 base_model.summary()
 #model.summary()
 
 # model = Model(inputs=base_model.input, outputs=base_model.get_layer('block5_pool').output)
-model = Model(inputs=base_model.input, outputs=base_model.get_layer('global_average_pooling2d_1').output)
+model = Model(inputs=base_model.input, outputs=base_model.get_layer('avg_pool').output)
 model.summary()
-
+end_shape = model.layers[-1].output_shape[-1]
 
 def process_batch(img_ls):
     x = preprocess_input(np.array(img_ls))
     pool_features = model.predict(x)
-    pool_features = pool_features.reshape(len(img_ls), model.layers[-1].output_shape[-1])
-    pool_features = sparse.csr_matrix(pool_features, dtype=np.float32)
+    pool_features = pool_features.reshape(len(img_ls), end_shape)
+    pool_features = pool_features.astype(np.float32)
     return pool_features
 
-batch_size = 512*16
+batch_size = 512*4
 os.chdir(path + '../imgfeatures/tmp')
 for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg', 
     file_ls   = []
     csr_ls    = [] 
     myzip = zipfile.ZipFile(path + '%s.zip'%(file_)) # zipfile.ZipFile('../input/avito-demand-prediction/train_jpg.zip')
-    files_in_zip = myzip.namelist()
+    files_in_zip = myzip.namelist()[:10]
     img_ls = []
     for idx, file in tqdm(enumerate(files_in_zip), total = len(files_in_zip)):
         if file.endswith('.jpg'):
@@ -77,11 +81,11 @@ for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg',
         img_ls = []
     myzip.close()
     # Dump file
-    mattst = sparse.vstack(csr_ls)
+    mattst = np.vstack(csr_ls)
     gc.collect()
-    fnamemat = path + '../features/mobilenet_pool_mat_%s'%(file_)
-    fnamefls = path + '../features/mobilenet_pool_fls_%s'%(file_)
-    sparse.save_npz(fnamemat, mattst)
+    fnamemat = path + '../features/densenet_pool_mat_%s'%(file_)
+    fnamefls = path + '../features/densenet_pool_fls_%s'%(file_)
+    np.save(fnamemat, mattst)
     pickle.dump(file_ls, open(fnamefls, "wb" ))
     gc.collect()
     del mattst, file_ls, csr_ls
@@ -89,10 +93,11 @@ for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg',
 
 
 for file_ in ['test', 'train']: # ,'test_jpg',
-    fnamemat = path + '../features/mobilenet_pool_mat_%s_jpg.npz'%(file_)
-    fnamefls = path + '../features/mobilenet_pool_fls_%s_jpg'%(file_)
+    file_
+    fnamemat = path + '../features/densenet_pool_mat_%s_jpg.npy'%(file_)
+    fnamefls = path + '../features/densenet_pool_fls_%s_jpg'%(file_)
     file_ls = pickle.load( open(fnamefls, 'rb' ))
-    mattst = sparse.load_npz(fnamemat)
+    mattst = np.load(fnamemat)
     # Reindex file
     df = pd.read_csv(path + '%s.csv.zip'%(file_), \
                          index_col = "image", \
@@ -102,11 +107,11 @@ for file_ in ['test', 'train']: # ,'test_jpg',
     fseqidx = df.loc[fseq].idx.values
 
     # Full sparse matrix test file
-    allmat = sparse.lil_matrix((df.shape[0], mattst.shape[1]), dtype=np.float32)
+    allmat = np.zeros((df.shape[0], mattst.shape[1]), dtype=np.float32)
     print(allmat[fseqidx].shape)
     print(mattst.shape)
     allmat[fseqidx] = mattst
     allmat = allmat.tocsr()
-    fname = path + '../features/mobilenet_pool_array_%s'%(file_)
+    fname = path + '../features/densenet_pool_array_%s'%(file_)
     sparse.save_npz(fname, allmat)
 

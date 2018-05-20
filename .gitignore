@@ -1,4 +1,6 @@
-*.jpg*
+nohup*
+
+*jpg*
 *.npy
 *.npz
 *.pkl

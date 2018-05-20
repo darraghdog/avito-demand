@@ -31,7 +31,6 @@ from keras.models import Model
 # Params
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
-path = "/home/ubuntu/avito/data/"
 #base_model = VGG19(weights='imagenet')
 #base_model = InceptionV3(weights='imagenet')
 base_model = MobileNet(weights='imagenet')
@@ -51,9 +50,9 @@ def process_batch(img_ls):
     pool_features = sparse.csr_matrix(pool_features, dtype=np.float32)
     return pool_features
 
-batch_size = 512*16
-os.chdir(path + '../imgfeatures/tmp')
-for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg', 
+batch_size = 512*4
+os.chdir('/home/darragh/avito/imgfeatures/tmp')
+for file_ in ['test_jpg']: # ,'test_jpg', 
     file_ls   = []
     csr_ls    = [] 
     myzip = zipfile.ZipFile(path + '%s.zip'%(file_)) # zipfile.ZipFile('../input/avito-demand-prediction/train_jpg.zip')
@@ -86,27 +85,30 @@ for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg',
     gc.collect()
     del mattst, file_ls, csr_ls
     gc.collect()
+    
 
+'''
+# Check reload
+gc.collect()
+fnamemat_tst = path + '../features/vgg19_block5_pool_mat_tst.pkl.npz'
+fnamefls_tst = path + '../features/vgg19_block5_pool_fls_tst.pkl'
+file_ls = pickle.load( open(fnamefls_tst, 'rb' ))
+mattst = sparse.load_npz(fnamemat_tst)
+mattst 
 
-for file_ in ['test', 'train']: # ,'test_jpg',
-    fnamemat = path + '../features/mobilenet_pool_mat_%s_jpg.npz'%(file_)
-    fnamefls = path + '../features/mobilenet_pool_fls_%s_jpg'%(file_)
-    file_ls = pickle.load( open(fnamefls, 'rb' ))
-    mattst = sparse.load_npz(fnamemat)
-    # Reindex file
-    df = pd.read_csv(path + '%s.csv.zip'%(file_), \
-                         index_col = "image", \
-                         usecols = ['image', 'item_id'])
-    df['idx'] = range(df.shape[0])
-    fseq = [(f.split('/')[-1]).replace('.jpg', '') for f in file_ls]
-    fseqidx = df.loc[fseq].idx.values
+# Reindex file
+testdf = pd.read_csv(path + 'test.csv.zip', \
+                     index_col = "image", \
+                     usecols = ['image', 'item_id'])
+testdf['idx'] = range(testdf.shape[0])
+fseq = [(f.split('/')[-1]).replace('.jpg', '') for f in file_ls]
+fseqidx = testdf.loc[fseq].idx.values
 
-    # Full sparse matrix test file
-    allmat = sparse.lil_matrix((df.shape[0], mattst.shape[1]), dtype=np.float32)
-    print(allmat[fseqidx].shape)
-    print(mattst.shape)
-    allmat[fseqidx] = mattst
-    allmat = allmat.tocsr()
-    fname = path + '../features/mobilenet_pool_array_%s'%(file_)
-    sparse.save_npz(fname, allmat)
-
+# Full sparse matrix test file
+alltst = sparse.lil_matrix((testdf.shape[0], mattst.shape[1]), dtype=np.float32)
+print(alltst[fseqidx].shape)
+print(mattst.shape)
+alltst[fseqidx] = mattst
+fname_tst = path + '../features/vgg19_block5_pool_test'
+sparse.save_npz(fname_tst, alltst)
+'''
