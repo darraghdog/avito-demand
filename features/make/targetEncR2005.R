@@ -7,7 +7,7 @@ library(fasttime)
 library(Hmisc)
 
 path = '~/avito/data/'
-path = '/Users/dhanley2/Documents/avito/data/'
+#path = '/Users/dhanley2/Documents/avito/data/'
 
 # Write out the <ip, device, os> level
 keepcols = c("user_id","region","city", "category_name", "param_1","param_2","param_3",
@@ -85,13 +85,15 @@ encodeDF = function(alldf, col, prior = 1000){
   setnames(alldf, "tmpcol", paste0(col, "_enc"))
   return(alldf)
 }
-alldf = encodeDF(alldf, "user_id", prior = 20)
+alldf = encodeDF(alldf, "user_id", prior = 30)
 alldf = encodeDF(alldf, "region", prior = 10000)
 alldf = encodeDF(alldf, "city", prior = 10000)
 alldf = encodeDF(alldf, "category_name", prior = 10000)
 alldf = encodeDF(alldf, "param_1", prior = 300)
 alldf = encodeDF(alldf, "param_2", prior = 300)
+alldf = encodeDF(alldf, "param_3", prior = 300)
 alldf = encodeDF(alldf, "image_top_1", prior = 150)
+alldf = encodeDF(alldf, "item_seq_number", prior = 150)
 alldf_enc = alldf[, colnames(alldf) %in% paste0(keepcols, "_enc"), with = F]
 
 # Write out the files

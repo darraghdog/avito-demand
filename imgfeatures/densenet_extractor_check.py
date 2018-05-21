@@ -34,7 +34,7 @@ from keras.models import Model
 # Params
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
-path = "/home/ubuntu/avito/data/"
+# path = "/home/ubuntu/avito/data/"
 #base_model = VGG19(weights='imagenet')
 #base_model = InceptionV3(weights='imagenet')
 base_model = DenseNet121(weights='imagenet')
@@ -57,11 +57,11 @@ def process_batch(img_ls):
 
 batch_size = 512*4
 os.chdir(path + '../imgfeatures/tmp')
-for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg', 
+for file_ in ['train_jpg']: # ,'test_jpg', 
     file_ls   = []
     csr_ls    = [] 
     myzip = zipfile.ZipFile(path + '%s.zip'%(file_)) # zipfile.ZipFile('../input/avito-demand-prediction/train_jpg.zip')
-    files_in_zip = myzip.namelist()
+    files_in_zip = myzip.namelist()[:4]
     img_ls = []
     for idx, file in tqdm(enumerate(files_in_zip), total = len(files_in_zip)):
         if file.endswith('.jpg'):
@@ -79,38 +79,51 @@ for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg',
     if len(img_ls) >0:
         csr_ls.append(process_batch(img_ls))
         img_ls = []
-    myzip.close()
-    # Dump file
-    mattst = np.vstack(csr_ls)
-    gc.collect()
-    fnamemat = path + '../features/densenet_pool_mat_%s'%(file_)
-    fnamefls = path + '../features/densenet_pool_fls_%s'%(file_)
-    np.save(fnamemat, mattst)
-    pickle.dump(file_ls, open(fnamefls, "wb" ))
-    gc.collect()
-    del mattst, file_ls, csr_ls
-    gc.collect()
+    #myzip.close()
 
-for file_ in ['test', 'train']: # ,'test_jpg',
-    file_
-    fnamemat = path + '../features/densenet_pool_mat_%s_jpg.npy'%(file_)
-    fnamefls = path + '../features/densenet_pool_fls_%s_jpg'%(file_)
-    file_ls = pickle.load( open(fnamefls, 'rb' ))
-    mattst = np.load(fnamemat)
-    # Reindex file
-    df = pd.read_csv(path + '%s.csv.zip'%(file_), \
-                         index_col = "image", \
-                         usecols = ['image', 'item_id'])
-    df['idx'] = range(df.shape[0])
-    fseq = [(f.split('/')[-1]).replace('.jpg', '') for f in file_ls]
-    fseqidx = df.loc[fseq].idx.values
+file_ = 'train'
+df = pd.read_csv(path + '%s.csv.zip'%(file_), \
+                     usecols = ['image', 'item_id'])
+# Check a sample image and see if it matches
+img = file_ls[0].split('/')[-1].split('.')[0]
+csr_ls[0][0]
+df[df['image'].isin([img])]
+trnmat = np.load(path + '../imgfeatures/densenet_pool_array_%s.npy'%(file_))
+trnmat[93146]
 
-    # Full sparse matrix test file
-    allmat = np.zeros((df.shape[0], mattst.shape[1]), dtype=np.float32)
-    print(allmat[fseqidx].shape)
-    print(mattst.shape)
-    allmat[fseqidx] = mattst
-    #allmat = allmat.tocsr()
-    fname = path + '../features/densenet_pool_array_%s'%(file_)
-    np.save(fname, allmat)
+batch_size = 512*4
+os.chdir(path + '../imgfeatures/tmp')
+for file_ in ['test_jpg']: # ,'test_jpg', 
+    file_ls   = []
+    csr_ls    = [] 
+    myzip = zipfile.ZipFile(path + '%s.zip'%(file_)) # zipfile.ZipFile('../input/avito-demand-prediction/train_jpg.zip')
+    files_in_zip = myzip.namelist()[:4]
+    img_ls = []
+    for idx, file in tqdm(enumerate(files_in_zip), total = len(files_in_zip)):
+        if file.endswith('.jpg'):
+            try:
+                myzip.extract(file, path=file.split('/')[3])
+                img_path = './%s/%s'%(((file.split('/')[-1]), file))
+                img = image.load_img(img_path, target_size=(224, 224))
+                img_ls.append(image.img_to_array(img))
+                file_ls.append(file)
+            except:
+                print('Missing %s'%(file))
+            if len(img_ls) == batch_size:
+                csr_ls.append(process_batch(img_ls))
+                img_ls = []
+    if len(img_ls) >0:
+        csr_ls.append(process_batch(img_ls))
+        img_ls = []
+    #myzip.close()
 
+file_ = 'test'
+df = pd.read_csv(path + '%s.csv.zip'%(file_), \
+                     usecols = ['image', 'item_id'])
+# Check a sample image and see if it matches
+img = file_ls[1].split('/')[-1].split('.')[0]
+csr_ls[0][1]
+df[df['image'].isin([img])]
+mat = np.load(path + '../imgfeatures/densenet_pool_array_%s.npy'%(file_))
+mat[180681]
+mat.dtype
