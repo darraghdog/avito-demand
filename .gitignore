@@ -4,3 +4,4 @@
 *.gz
 *.zip
 *.csv
+*.ipynb*
