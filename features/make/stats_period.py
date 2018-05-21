@@ -28,6 +28,17 @@ print('[{}] Load Train/Test'.format(time.time() - start_time))
 date_cols = ['activation_date', 'date_from', 'date_to']
 trnpdf = pd.read_csv(path + "periods_train.csv.zip", compression = 'zip', parse_dates = date_cols)
 tstpdf = pd.read_csv(path + "periods_test.csv.zip", compression = 'zip', parse_dates = date_cols)
+
+print('[{}] Load Train/Test'.format(time.time() - start_time))
+traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
+traindex = traindf.index
+testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", parse_dates = ["activation_date"])
+testdex = testdf.index
+
+traindf.loc[trnpdf['item_id'][:100].values]
+
+pd.merge(traindf.reset_index(), trnpdf, on = ['item_id'])
+
 pdf    = pd.concat([trnpdf, tstpdf], axis = 0)
 del trnpdf, tstpdf
 gc.collect()
