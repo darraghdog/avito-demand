@@ -9,6 +9,7 @@ mlp_1704A     0.2162             ??????             0.2217          Add in aggre
 mlp_1605B     0.2166             ??????             0.2224          Add all item titles from avctive files per user
 mlp_1605A     0.2170             ??????             0.2228
 nnet_1505     0.2177             ??????             
+nnet_2005     0.2160             ??????             0.2229
 lgb_1404      0.2182             ??????             0.2241
 ```
 
