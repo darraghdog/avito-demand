@@ -6,7 +6,9 @@ Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
 mlp_1905      0.2159             ??????             0.2217          Add in different kinds for grouping continuous
 mlp_1704A     0.2162             ??????             0.2217          Add in aggregate features from active files
+rnn_2105      0.2153             ??????             0.2221          RNN only submission, more regularization .2153 on validation
 mlp_1605B     0.2166             ??????             0.2224          Add all item titles from avctive files per user
+lgb_2105C     0.2162             ??????             0.2225          Add count and encoding
 mlp_1605A     0.2170             ??????             0.2228
 nnet_1505     0.2177             ??????             
 nnet_2005     0.2160             ??????             0.2229
