@@ -4,6 +4,7 @@
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment 
 ================================================================================================
+lgb_2205      0.2153             ??????             0.2213          Add oof ridge feature on text data and image data.
 rnn_2205      0.2149             ??????             0.2215          Russian text processing
 lgb_2205      0.2157             ??????             0.2215          Add oof ridge feature on text data 
 mlp_1905      0.2159             ??????             0.2217          Add in different kinds for grouping continuous
