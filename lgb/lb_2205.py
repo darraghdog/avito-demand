@@ -255,7 +255,7 @@ print('RMSE:', np.sqrt(metrics.mean_squared_error(y_valid, lgb_clf.predict(X_val
 lgpred = lgb_clf.predict(testing)
 lgsub = pd.DataFrame(lgpred,columns=["deal_probability"],index=testdex)
 lgsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
-lgsub.to_csv("../sub/lgsub_2105C.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv("../sub/lgsub_2205.csv.gz",index=True,header=True, compression = 'gzip')
 print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 
 
