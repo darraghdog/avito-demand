@@ -4,6 +4,7 @@
 # Models Packages
 from sklearn import metrics
 from sklearn.metrics import mean_squared_error
+from math import sqrt
 import time, gc
 import pandas as pd
 import numpy as np
@@ -113,7 +114,7 @@ foldls = [["2017-03-15", "2017-03-16", "2017-03-17"], \
             ["2017-03-27", "2017-03-28", "2017-03-29", \
                 "2017-03-30", "2017-03-31", "2017-04-01", \
                 "2017-04-02", "2017-04-03","2017-04-07"]]
-folds = [df['activation_date'].isin(f) for f in foldls]
+folds = [df.loc[traindex,:]['activation_date'].isin(f) for f in foldls]
 [sum(f) for f in folds]
 
 print('[{}] Modified sklearn wrapper'.format(time.time() - start_time))
@@ -134,12 +135,11 @@ def get_oof(clf, x_train, y, x_test):
     oof_test = np.zeros((ntest,))
     oof_test_skf = np.empty((NFOLDS, ntest))
 
-    #for i, (train_index, test_index) in enumerate(folds):
     for i, f in enumerate(folds):
-        #train_index, test_index = f==False, f
+        train_index, test_index = np.where(f==False), np.where(f)
         print('\nFold {}'.format(i))
         x_tr = x_train[train_index]
-        y_tr = y[train_index]
+        y_tr = y.values[train_index]
         x_te = x_train[test_index]
 
         clf.train(x_tr, y_tr)
@@ -150,19 +150,13 @@ def get_oof(clf, x_train, y, x_test):
     oof_test[:] = oof_test_skf.mean(axis=0)
     return oof_train.reshape(-1, 1), oof_test.reshape(-1, 1)
 
-
-
+print('[{}] Start ridge'.format(time.time() - start_time))
 SEED    = 200
 NFOLDS  = 5
 ntrain  = df.loc[traindex,:].shape[0]
 ntest   = df.loc[testdex,:].shape[0]
-ridge_params = {'alpha':22.0, 'fit_intercept':True, 'normalize':False, 'copy_X':True,
-                'max_iter':None, 'tol':0.001, 'solver':'auto', 'random_state':SEED}
-
-for i, f in enumerate(folds):
-    train_index, test_index = f==False, f
-    
-np.where(np.any(e>15, axis=1))
+ridge_params = { 'alpha':22.0, 'fit_intercept':True, 'normalize':False, 'copy_X':True,
+                'max_iter':None, 'tol':0.001, 'solver':'auto', 'random_state':SEED }
 
 ridge = SklearnWrapper(clf=Ridge, seed = SEED, params = ridge_params)
 ridge_oof_train, ridge_oof_test = get_oof(ridge, ready_df[:ntrain], y, ready_df[ntrain:])
@@ -171,7 +165,5 @@ rms = sqrt(mean_squared_error(y, ridge_oof_train))
 print('Ridge OOF RMSE: {}'.format(rms))
 
 ridge_preds = np.concatenate([ridge_oof_train, ridge_oof_test])
-
 df['ridge_preds'] = ridge_preds
-
 df[['ridge_preds']].to_csv(path + '../features/ridgeText5CV.csv.gz', compression = 'gzip', index = False)
