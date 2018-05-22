@@ -260,6 +260,7 @@ print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 
 
 '''
+With ridge feature
 [200]   train's rmse: 0.211268  valid's rmse: 0.217224
 [400]   train's rmse: 0.203472  valid's rmse: 0.216138
 [600]   train's rmse: 0.198542  valid's rmse: 0.215859
