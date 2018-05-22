@@ -21,7 +21,7 @@ from sklearn.linear_model import Ridge
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
-path = '/Users/dhanley2/Documents/avito/data/'
+#path = '/Users/dhanley2/Documents/avito/data/'
 
 # path = '/home/ubuntu/avito/data/'
 start_time = time.time()
@@ -29,10 +29,10 @@ full = False
 validation = False
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
-usecols = ['activation_date', 'deal_probability', 'item_id']
+usecols = ['activation_date', 'item_id', 'deal_probability']
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", usecols = usecols, compression = 'zip') # , parse_dates = ["activation_date"]
 traindex = traindf.index
-testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", usecols = usecols) #, parse_dates = ["activation_date"]
+testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", usecols = usecols[:-1]) #, parse_dates = ["activation_date"]
 testdex = testdf.index
 y = traindf.deal_probability.copy()
 traindf.drop("deal_probability",axis=1, inplace=True)
@@ -41,8 +41,15 @@ print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 traindf['activation_date'].value_counts()
 
 print('[{}] Load Densenet image features'.format(time.time() - start_time))
-dnimgtrn = np.load('../features/....')
-dnimgtst = np.load('../features/....')
+dnimgtrn = np.load(path+'../imgfeatures/densenet_pool_array_train.npy')
+dnimgtst = np.load(path+'../imgfeatures/densenet_pool_array_test.npy')
+
+print('[{}] Combine Train and Test'.format(time.time() - start_time))
+df = pd.concat([traindf,testdf],axis=0)
+del traindf,testdf
+gc.collect()
+df['idx'] = range(df.shape[0])
+print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
 
 print('[{}] Set up folds'.format(time.time() - start_time))
 foldls = [["2017-03-15", "2017-03-16", "2017-03-17"], \
@@ -84,6 +91,7 @@ def get_oof(clf, x_train, y, x_test):
 
         oof_train[test_index] = clf.predict(x_te)
         oof_test_skf[i, :] = clf.predict(x_test)
+        gc.collect()
 
     oof_test[:] = oof_test_skf.mean(axis=0)
     return oof_train.reshape(-1, 1), oof_test.reshape(-1, 1)
@@ -93,16 +101,24 @@ SEED    = 200
 NFOLDS  = 5
 ntrain  = df.loc[traindex,:].shape[0]
 ntest   = df.loc[testdex,:].shape[0]
-ridge_params = { 'alpha':22.0, 'fit_intercept':True, 'normalize':False, 'copy_X':True,
+
+ridge_params = { 'alpha':0.000001, 'fit_intercept':True, 'normalize':False, 'copy_X':True,
                 'max_iter':None, 'tol':0.001, 'solver':'auto', 'random_state':SEED }
 
 ridge = SklearnWrapper(clf=Ridge, seed = SEED, params = ridge_params)
 #ridge_oof_train, ridge_oof_test = get_oof(ridge, ready_df[:ntrain], y, ready_df[ntrain:])
-ridge_oof_train, ridge_oof_test = get_oof(ridge, mattrn, y, mattst)
+ridge_oof_train, ridge_oof_test = get_oof(ridge, dnimgtrn , y, dnimgtst)
 
 rms = sqrt(mean_squared_error(y, ridge_oof_train))
 print('Ridge OOF RMSE: {}'.format(rms))
+# Ridge OOF RMSE: 0.25157
+# With normalising 0.2584
+
+gc.collect()
+
 
 ridge_preds = np.concatenate([ridge_oof_train, ridge_oof_test])
 df['ridge_img_preds'] = ridge_preds
 df[['ridge_img_preds']].to_csv(path + '../features/ridgeImg5CV.csv.gz', compression = 'gzip', index = False)
+
+df['ridge_img_preds'].hist()
