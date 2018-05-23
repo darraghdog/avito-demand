@@ -19,11 +19,11 @@ import matplotlib.pyplot as plt
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
-#path = '/Users/dhanley2/Documents/avito/data/'
+path = '/Users/dhanley2/Documents/avito/data/'
 
 # path = '/home/ubuntu/avito/data/'
 start_time = time.time()
-full = False
+full = True
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
