@@ -216,15 +216,7 @@ print('[{}] Modeling Stage'.format(time.time() - start_time))
 # Combine Dense Features with Sparse Text Bag of Words Features
 #df.drop(textfeats+['text', 'all_titles'], axis=1,inplace=True)
 #dfnorm = preprocessing.normalise(df.values)
-X_train1 = hstack([ready_dfd[0:traindex.shape[0]]       ,ready_df1[0:traindex.shape[0]]])
-X_test1 = hstack([ready_dfd[traindex.shape[0]:]         ,ready_df1[traindex.shape[0]:]])
-X_train2 = hstack([ready_dfd[0:traindex.shape[0]]       ,ready_df2[0:traindex.shape[0]]])
-X_test2 = hstack([ready_dfd[traindex.shape[0]:]         ,ready_df2[traindex.shape[0]:]])
-X_train1 = X_train1.tocsr()
-X_test1  = X_test1.tocsr()
-X_train2 = X_train2.tocsr()
-X_test2  = X_test2.tocsr()
-gc.collect();
+
 
 print('[{}] Set up folds'.format(time.time() - start_time))
 foldls = [["2017-03-15", "2017-03-16", "2017-03-17"], \
@@ -280,23 +272,35 @@ ntest   = df.loc[testdex,:].shape[0]
 ridge_params = { 'alpha':22.0, 'fit_intercept':True, 'normalize':False, 'copy_X':True,
                 'max_iter':None, 'tol':0.001, 'solver':'auto', 'random_state':SEED }
 
-ridge = SklearnWrapper(clf=Ridge, seed = SEED, params = ridge_params)
+ridge = SklearnWrapper(clf=Ridge, seed = SEED, params = ridge_params)                                                              
 ridge_oof_train1, ridge_oof_test1 = get_oof(ridge, ready_df1[:ntrain], y, ready_df1[ntrain:])
 print('Ridge OOF RMSE: {}'.format(sqrt(mean_squared_error(y, ridge_oof_train1))))
 ridge_oof_train2, ridge_oof_test2 = get_oof(ridge, ready_df2[:ntrain], y, ready_df2[ntrain:])
 print('Ridge OOF RMSE: {}'.format(sqrt(mean_squared_error(y, ridge_oof_train2))))
-#Ridge OOF RMSE: 0.2285614218020972
-#Ridge OOF RMSE: 0.2276622560727391
+#Ridge OOF RMSE: 0.2285614
+#Ridge OOF RMSE: 0.2276622
 
 
-ridge_params = { 'alpha':22.0, 'fit_intercept':True, 'normalize':True, 'copy_X':True,
+ridge_params = { 'alpha':22.0, 'fit_intercept':True, 'normalize':False, 'copy_X':True,
                 'max_iter':None, 'tol':0.001, 'solver':'auto', 'random_state':SEED }
+
+X_train1 = hstack([ready_dfd[0:traindex.shape[0]]       ,ready_df1[0:traindex.shape[0]]])
+X_test1 = hstack([ready_dfd[traindex.shape[0]:]         ,ready_df1[traindex.shape[0]:]])
+X_train2 = hstack([ready_dfd[0:traindex.shape[0]]       ,ready_df2[0:traindex.shape[0]]])
+X_test2 = hstack([ready_dfd[traindex.shape[0]:]         ,ready_df2[traindex.shape[0]:]])
+X_train1 = X_train1.tocsr()
+X_test1  = X_test1.tocsr()
+X_train2 = X_train2.tocsr()
+X_test2  = X_test2.tocsr()
+gc.collect();
 
 ridge = SklearnWrapper(clf=Ridge, seed = SEED, params = ridge_params)
 ridge_oof_train3, ridge_oof_test3 = get_oof(ridge, X_train1, y, X_test1)
 print('Ridge OOF RMSE: {}'.format(sqrt(mean_squared_error(y, ridge_oof_train3))))
 ridge_oof_train4, ridge_oof_test4 = get_oof(ridge, X_train2, y, X_test2)
 print('Ridge OOF RMSE: {}'.format(sqrt(mean_squared_error(y, ridge_oof_train4))))
+#Ridge OOF RMSE: 0.22514285
+#Ridge OOF RMSE: 0.22489954
 
 
 df['ridge_preds_txt1'] = np.concatenate([ridge_oof_train1, ridge_oof_test1])

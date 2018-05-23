@@ -26,7 +26,7 @@ path = '/Users/dhanley2/Documents/avito/data/'
 
 # path = '/home/ubuntu/avito/data/'
 start_time = time.time()
-full = True
+full = False
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
@@ -148,16 +148,72 @@ for cols in textfeats:
 
 
 print('[{}] Clean text and tokenize'.format(time.time() - start_time))
+
 toktok = ToktokTokenizer()
 tokSentMap = {}
 morpher = pymorphy2.MorphAnalyzer()
 def tokSent(sent):
     sent = sent.replace('/', ' ')
     return " ".join(morpher.parse(word)[0].normal_form for word in toktok.tokenize(rgx.sub(' ', sent)))
+def tokCol(var):
+    return [tokSent(s) for s in var.tolist()]
 rgx = re.compile('[%s]' % '!"#%&()*,-./:;<=>?@[\\]^_`{|}~\t\n')   
-for col in []:
-    df[col]    =df[col].str.lower().map(tokSent)
+                 
+from multiprocessing import cpu_count, Pool
+ 
+partitions = min(cpu_count(), 6) #Define as many partitions as you want
+ 
+def parallelize(data, func):
+    data_split = np.array_split(data.values, partitions)
+    pool = Pool(cores)
+    data = pd.concat([pd.Series(l) for l in pool.map(tokCol, data_split)]).values
+    pool.close()
+    pool.join()
+    return data  
+
+text_cols = ['description', 'text', 'text_feat', 'all_titles']
+for col in text_cols:
+    print('Tokenise %s'%(col))
+    df[col] = parallelize(df[col], tokCol)
+df[text_cols].to_csv(path + '../features/text_features_morphed.csv.gz', compression = 'gzip')
 print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
+
+df[['description', 'text', 'text_feat', 'all_titles']].head()
+
+'''                                                    description  \
+item_id                                                           
+b912c3c6a6ad  кокон для сна малыша,пользовались меньше месяц...   
+2dac0150717d          стойка для одежды, под вешалки. с бутика.   
+ba83aefab5dc  в хорошем состоянии, домашний кинотеатр с blu ...   
+02996f1dd2ea                             продам кресло от0-25кг   
+7c90be56d2ab                           все вопросы по телефону.   
+
+                                                           text  \
+item_id                                                           
+b912c3c6a6ad  Кокон для сна малыша,пользовались меньше месяц...   
+2dac0150717d  Стойка для одежды, под вешалки. С бутика. Стой...   
+ba83aefab5dc  В хорошем состоянии, домашний кинотеатр с blu ...   
+02996f1dd2ea  Продам кресло от0-25кг Автокресло Личные вещи ...   
+7c90be56d2ab  Все вопросы по телефону. ВАЗ 2110, 2003 Трансп...   
+
+                                        text_feat  \
+item_id                                             
+b912c3c6a6ad    постельные принадлежности nan nan   
+2dac0150717d                       другое nan nan   
+ba83aefab5dc  видео, dvd и blu-ray плееры nan nan   
+02996f1dd2ea         автомобильные кресла nan nan   
+7c90be56d2ab           с пробегом ваз (lada) 2110   
+
+                                                     all_titles  
+item_id                                                          
+b912c3c6a6ad  Кокоби(кокон для сна) Коляска 2 в 1 Tako jumpe...  
+2dac0150717d                                  Стойка для Одежды  
+ba83aefab5dc  Philips bluray DVD привод Жесткий диск SATA-II...  
+02996f1dd2ea  Автокресло Отдам органзу Отдам одежду Платья к...  
+7c90be56d2ab                                     ВАЗ 2110, 2003  
+'''
+
+df[text_cols].head()
 
 print('[{}] [TF-IDF] Term Frequency Inverse Document Frequency Stage'.format(time.time() - start_time))
 russian_stop = set(stopwords.words('russian'))
