@@ -54,8 +54,6 @@ gc.collect()
 df['idx'] = range(df.shape[0])
 print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
 
-df.columns
-df[['title', 'category_name', 'parent_category_name', 'description']].drop_duplicates().shape
 
 print('[{}] Load engineered features'.format(time.time() - start_time))
 featusrttl = pd.read_csv(path + '../features/user_agg.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
@@ -64,10 +62,12 @@ featusrprd = pd.read_csv(path + '../features/user_activ_period_stats.gz', compre
 featrdgtxt = pd.read_csv(path + '../features/ridgeText5CV.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 #featrdgtxts = pd.read_csv(path + '../features/ridgeTextStr5CV.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featrdgimg = pd.read_csv(path + '../features/ridgeImg5CV.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
-featimgsz  = pd.read_csv(path + '../features/image_sizes.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
-
+featrdgprc = pd.read_csv(path + '../features/price_category_ratios.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+featrdgprc.fillna(-1, inplace = True)
 featenc = pd.read_csv(path + '../features/alldf_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featct  = pd.read_csv(path + '../features/alldf_count.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+featct.columns
+featusrcat.head()
 featusrttl.rename(columns={'title': 'all_titles'}, inplace = True)
 keep = ['user_id', 'all_titles', 'user_avg_price', 'user_ad_ct']
 df = df.reset_index().merge(featusrttl[keep], on = 'user_id').set_index('item_id')
@@ -77,12 +77,6 @@ df = df.reset_index().merge(featusrcat[keep], on = ['user_id', 'parent_category_
 keep = ['user_id', 'user_activ_sum', 'user_activ_mean', 'user_activ_var']
 gc.collect()
 df = df.reset_index().merge(featusrprd[keep], on = ['user_id'], how = 'left').set_index('item_id')
-featimgsz.head()
-df.head()
-featimgsz['image_size']     = featimgsz['image_width']*featimgsz['image_height']
-featimgsz['image_dimratio'] = featimgsz['image_width']/featimgsz['image_height']
-featimgsz.drop('image_dir', 1, inplace = True)
-df = df.reset_index().merge(featimgsz, left_on = ['image'], right_on = ['image_id'], how = 'left').set_index('item_id')
 print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))  
 
 print('[{}] Resort data correctly'.format(time.time() - start_time))
@@ -91,7 +85,7 @@ df.drop(['idx'], axis=1,inplace=True)
 df.reset_index(inplace = True)
 
 df.head()
-df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt],axis=1)
+df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc],axis=1)
 #df['ridge_txt'] = featrdgtxt['ridge_preds'].values
 #df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
 
@@ -99,7 +93,7 @@ df['ridge_img'] = featrdgimg['ridge_img_preds'].values
 df = df.set_index('item_id')
 df.drop(['index'], axis=1,inplace=True)
 df.columns
-del featusrttl, featusrcat, featusrprd, featenc
+del featusrttl, featusrcat, featusrprd, featenc, featrdgprc
 # del featusrttl, featusrcat, featusrprd, featenc, featrdgtxts
 gc.collect()
 
@@ -192,11 +186,6 @@ else:
         df[col] = parallelize(df[col], tokCol)
     df[text_cols].to_csv(path + '../features/text_features_morphed.csv.gz', compression = 'gzip')
 gc.collect()
-
-print('[{}] Fill Image Cols'.format(time.time() - start_time))
-for col in ['image_width', 'image_height', 'image_size', 'image_dimratio']:
-    df[col] = df[col].convert_objects(convert_numeric=True).fillna(0).values
-df.drop('image_id', 1, inplace = True)
 
 print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
 df.head()
@@ -312,7 +301,7 @@ print('RMSE:', np.sqrt(metrics.mean_squared_error(y_valid, lgb_clf.predict(X_val
 lgpred = lgb_clf.predict(testing)
 lgsub = pd.DataFrame(lgpred,columns=["deal_probability"],index=testdex)
 lgsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
-lgsub.to_csv("../sub/lgsub_2405B.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv("../sub/lgsub_2405.csv.gz",index=True,header=True, compression = 'gzip')
 print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 
 
