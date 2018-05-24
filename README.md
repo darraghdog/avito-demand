@@ -22,6 +22,7 @@ lgb_1404      0.2182             ??????             0.2241
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
+all_2405      ????               ?????              0.2193          Equal Blend of mlp_1905, lgb_2205 and rnn_2205
 mlp_1905      ????               ?????              0.2204          MLP 1705A and 1905 50/50 and mix 50/50 with best LB            
 mlp_1705A     ????               ??????             0.2204          Weighted avg mlp and best lb kernel https://www.kaggle.com/lscoelho/blending-
 mlp_1605B     ????               ??????             0.2208          Weighted avg mlp and best lb kernel https://www.kaggle.com/lscoelho/blending-models-lb-0-2216   
