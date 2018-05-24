@@ -287,16 +287,15 @@ lgsub.to_csv("../sub/lgsub_2205B.csv.gz",index=True,header=True, compression = '
 print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 
 '''
-[200]   train's rmse: 0.210965  valid's rmse: 0.216865
-[400]   train's rmse: 0.202713  valid's rmse: 0.215802
-[600]   train's rmse: 0.197744  valid's rmse: 0.215442
-[800]   train's rmse: 0.194147  valid's rmse: 0.21533
-[1000]  train's rmse: 0.191204  valid's rmse: 0.215305
-[1200]  train's rmse: 0.188652  valid's rmse: 0.21531
-[1400]  train's rmse: 0.186303  valid's rmse: 0.215346
-[1600]  train's rmse: 0.184005  valid's rmse: 0.215396
+2305B
+[200]   train's rmse: 0.212002  valid's rmse: 0.216999
+[400]   train's rmse: 0.20366   valid's rmse: 0.215844
+[600]   train's rmse: 0.19811   valid's rmse: 0.215404
+[800]   train's rmse: 0.193943  valid's rmse: 0.21526
+[1000]  train's rmse: 0.190664  valid's rmse: 0.21521
+[1200]  train's rmse: 0.18778   valid's rmse: 0.215188
 Early stopping, best iteration is:
-[1119]  train's rmse: 0.189614  valid's rmse: 0.215295
+[1244]  train's rmse: 0.187187  valid's rmse: 0.215173
 '''
 
 

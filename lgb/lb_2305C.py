@@ -18,11 +18,12 @@ import matplotlib.pyplot as plt
 import pymorphy2
 import nltk, re
 from nltk.tokenize import ToktokTokenizer
+from multiprocessing import cpu_count, Pool
 
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
-path = '/Users/dhanley2/Documents/avito/data/'
+#path = '/Users/dhanley2/Documents/avito/data/'
 
 # path = '/home/ubuntu/avito/data/'
 start_time = time.time()
@@ -146,9 +147,7 @@ for cols in textfeats:
     df[cols + '_num_unique_words'] = df[cols].apply(lambda comment: len(set(w for w in comment.split())))
     df[cols + '_words_vs_unique'] = df[cols+'_num_unique_words'] / df[cols+'_num_words'] * 100 # Count Unique Words
 
-
 print('[{}] Clean text and tokenize'.format(time.time() - start_time))
-
 toktok = ToktokTokenizer()
 tokSentMap = {}
 morpher = pymorphy2.MorphAnalyzer()
@@ -158,62 +157,23 @@ def tokSent(sent):
 def tokCol(var):
     return [tokSent(s) for s in var.tolist()]
 rgx = re.compile('[%s]' % '!"#%&()*,-./:;<=>?@[\\]^_`{|}~\t\n')   
-                 
-from multiprocessing import cpu_count, Pool
- 
-partitions = min(cpu_count(), 6) #Define as many partitions as you want
- 
+
+partitions = 4 
 def parallelize(data, func):
     data_split = np.array_split(data.values, partitions)
-    pool = Pool(cores)
+    pool = Pool(partitions)
     data = pd.concat([pd.Series(l) for l in pool.map(tokCol, data_split)]).values
     pool.close()
     pool.join()
     return data  
 
-text_cols = ['description', 'text', 'text_feat', 'all_titles']
+text_cols = ['description', 'text', 'text_feat']
 for col in text_cols:
-    print('Tokenise %s'%(col))
+    print(col + ' tokenise [{}]'.format(time.time() - start_time))
     df[col] = parallelize(df[col], tokCol)
 df[text_cols].to_csv(path + '../features/text_features_morphed.csv.gz', compression = 'gzip')
+gc.collect()
 print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
-
-df[['description', 'text', 'text_feat', 'all_titles']].head()
-
-'''                                                    description  \
-item_id                                                           
-b912c3c6a6ad  кокон для сна малыша,пользовались меньше месяц...   
-2dac0150717d          стойка для одежды, под вешалки. с бутика.   
-ba83aefab5dc  в хорошем состоянии, домашний кинотеатр с blu ...   
-02996f1dd2ea                             продам кресло от0-25кг   
-7c90be56d2ab                           все вопросы по телефону.   
-
-                                                           text  \
-item_id                                                           
-b912c3c6a6ad  Кокон для сна малыша,пользовались меньше месяц...   
-2dac0150717d  Стойка для одежды, под вешалки. С бутика. Стой...   
-ba83aefab5dc  В хорошем состоянии, домашний кинотеатр с blu ...   
-02996f1dd2ea  Продам кресло от0-25кг Автокресло Личные вещи ...   
-7c90be56d2ab  Все вопросы по телефону. ВАЗ 2110, 2003 Трансп...   
-
-                                        text_feat  \
-item_id                                             
-b912c3c6a6ad    постельные принадлежности nan nan   
-2dac0150717d                       другое nan nan   
-ba83aefab5dc  видео, dvd и blu-ray плееры nan nan   
-02996f1dd2ea         автомобильные кресла nan nan   
-7c90be56d2ab           с пробегом ваз (lada) 2110   
-
-                                                     all_titles  
-item_id                                                          
-b912c3c6a6ad  Кокоби(кокон для сна) Коляска 2 в 1 Tako jumpe...  
-2dac0150717d                                  Стойка для Одежды  
-ba83aefab5dc  Philips bluray DVD привод Жесткий диск SATA-II...  
-02996f1dd2ea  Автокресло Отдам органзу Отдам одежду Платья к...  
-7c90be56d2ab                                     ВАЗ 2110, 2003  
-'''
-
-df[text_cols].head()
 
 print('[{}] [TF-IDF] Term Frequency Inverse Document Frequency Stage'.format(time.time() - start_time))
 russian_stop = set(stopwords.words('russian'))
@@ -333,8 +293,7 @@ lgsub = pd.DataFrame(lgpred,columns=["deal_probability"],index=testdex)
 lgsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
 lgsub.to_csv("../sub/lgsub_2305C.csv.gz",index=True,header=True, compression = 'gzip')
 print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
-import nltk
-nltk.download('stopwords')
+
 
 '''
 [200]   train's rmse: 0.211268  valid's rmse: 0.217224
