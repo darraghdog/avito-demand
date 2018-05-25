@@ -26,7 +26,7 @@ path = "/home/darragh/avito/data/"
 
 # path = '/home/ubuntu/avito/data/'
 start_time = time.time()
-full = False
+full = True
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
@@ -294,15 +294,63 @@ else:
 f, ax = plt.subplots(figsize=[7,10])
 lgb.plot_importance(lgb_clf, max_num_features=50, ax=ax)
 plt.title("Light GBM Feature Importance")
-plt.savefig(path + '../plots/feature_import_2405.png')
+plt.savefig(path + '../plots/feature_import_2405D.png')
 
 print("Model Evaluation Stage")
 print('RMSE:', np.sqrt(metrics.mean_squared_error(y_valid, lgb_clf.predict(X_valid))))
 lgpred = lgb_clf.predict(testing)
 lgsub = pd.DataFrame(lgpred,columns=["deal_probability"],index=testdex)
 lgsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
-lgsub.to_csv("../sub/lgsub_2405.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv("../sub/lgsub_2405D.csv.gz",index=True,header=True, compression = 'gzip')
 print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
+
+'''
+[20]    train's rmse: 0.240894  valid's rmse: 0.238847
+[40]    train's rmse: 0.229728  valid's rmse: 0.228536
+[60]    train's rmse: 0.223627  valid's rmse: 0.223319
+[80]    train's rmse: 0.219795  valid's rmse: 0.220408
+[100]   train's rmse: 0.217055  valid's rmse: 0.218666
+[120]   train's rmse: 0.215143  valid's rmse: 0.21765
+[140]   train's rmse: 0.213463  valid's rmse: 0.216999
+[160]   train's rmse: 0.212091  valid's rmse: 0.216544
+[180]   train's rmse: 0.210888  valid's rmse: 0.21626
+[200]   train's rmse: 0.209772  valid's rmse: 0.21605
+[220]   train's rmse: 0.208746  valid's rmse: 0.215867
+[240]   train's rmse: 0.207839  valid's rmse: 0.215704
+[260]   train's rmse: 0.2069    valid's rmse: 0.215584
+[280]   train's rmse: 0.20607   valid's rmse: 0.215431
+[300]   train's rmse: 0.205233  valid's rmse: 0.215324
+[320]   train's rmse: 0.204475  valid's rmse: 0.215227
+[340]   train's rmse: 0.2038    valid's rmse: 0.21515
+[360]   train's rmse: 0.203135  valid's rmse: 0.215087
+[380]   train's rmse: 0.202474  valid's rmse: 0.21501
+[400]   train's rmse: 0.201839  valid's rmse: 0.214936
+[420]   train's rmse: 0.201252  valid's rmse: 0.214885
+[440]   train's rmse: 0.200643  valid's rmse: 0.21485
+[460]   train's rmse: 0.200045  valid's rmse: 0.214827
+[480]   train's rmse: 0.199519  valid's rmse: 0.214779
+[500]   train's rmse: 0.198991  valid's rmse: 0.214759
+[520]   train's rmse: 0.198507  valid's rmse: 0.214708
+[540]   train's rmse: 0.198042  valid's rmse: 0.21468
+[560]   train's rmse: 0.197555  valid's rmse: 0.214668
+[580]   train's rmse: 0.197079  valid's rmse: 0.214654
+[600]   train's rmse: 0.196643  valid's rmse: 0.214631
+[620]   train's rmse: 0.196199  valid's rmse: 0.214625
+[640]   train's rmse: 0.195775  valid's rmse: 0.214619
+[660]   train's rmse: 0.195338  valid's rmse: 0.214612
+[680]   train's rmse: 0.194935  valid's rmse: 0.21459
+[700]   train's rmse: 0.194544  valid's rmse: 0.214578
+[720]   train's rmse: 0.194192  valid's rmse: 0.214563
+[740]   train's rmse: 0.193801  valid's rmse: 0.214555
+[760]   train's rmse: 0.19344   valid's rmse: 0.214554
+[780]   train's rmse: 0.193087  valid's rmse: 0.21454
+[800]   train's rmse: 0.192741  valid's rmse: 0.214532
+[820]   train's rmse: 0.19243   valid's rmse: 0.214526
+[840]   train's rmse: 0.192116  valid's rmse: 0.214521
+[860]   train's rmse: 0.191798  valid's rmse: 0.214527
+Early stopping, best iteration is:
+[844]   train's rmse: 0.19206   valid's rmse: 0.214519
+'''
 
 
 '''

@@ -25,18 +25,20 @@ rm(trndf, tstdf)
 gc(); gc()
 
 alldf[, `:=`(ct = .N, meanpr = mean(price, na.rm = T)), by = parent_category_name]
-alldf[, pcat_price_rratio := (((price/meanpr)*.N)+(20))/(.N+20)]
+alldf[, pcat_price_rratio := (((price/meanpr)*ct)+(200))/(ct+200)]
+hist(alldf$pcat_price_rratio, breaks = 10000)
+
 alldf[, `:=`(ct = .N, meanpr = mean(price, na.rm = T)), by = .(parent_category_name, category_name)]
-alldf[, cat_price_rratio := (((price/meanpr)*.N)+(20))/(.N+20)]
-hist(alldf$cat_price_rratio, breaks = 1000000)
+alldf[, cat_price_rratio := (((price/meanpr)*ct)+(50))/(ct+50)]
+
 alldf[, `:=`(ct = .N, meanpr = mean(price, na.rm = T)), by = .(parent_category_name, category_name, title)]
-alldf[, ttl_price_rratio := (((price/meanpr)*.N)+(5))/(.N+5)]
-hist(alldf$ttl_price_rratio, xlim = c(0, 3), breaks = 10000)
+alldf[, ttl_price_rratio := (((price/meanpr)*ct)+(5))/(ct+5)]
+
 alldf[, `:=`(ct = .N, meanpr = mean(log(price+1), na.rm = T)), by = parent_category_name]
-alldf[, pcat_log_price_rratio := (((log(price+1)/meanpr)*.N)+(20))/(.N+20)]
+alldf[, pcat_log_price_rratio := (((log(price+1)/meanpr)*ct)+(200))/(ct+200)]
+
 alldf[, `:=`(ct = .N, meanpr = mean(log(1+price), na.rm = T)), by = .(parent_category_name, category_name)]
-alldf[, cat_log_price_rratio := (((log(1+price)/meanpr)*.N)+(20))/(.N+20)]
-hist(alldf$cat_log_price_rratio, breaks = 1000)
+alldf[, cat_log_price_rratio := (((log(1+price)/meanpr)*ct)+(50))/(ct+50)]
 
 # Write out the files
 writeme = function(df, name){

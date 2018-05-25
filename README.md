@@ -4,6 +4,7 @@
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
+lgb_2405D     0.2145             ??????             0.2204          Price ratios over category/title   
 lgb_2405      0.2152             ??????             0.2211          pymorph on text
 lgb_2205      0.2153             ??????             0.2213          Add oof ridge feature on text data and image data.
 rnn_2205      0.2149             ??????             0.2215          Russian text processing
