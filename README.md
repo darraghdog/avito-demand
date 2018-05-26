@@ -4,6 +4,7 @@
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
+rnn_2605      0.2146             ??????             0.2213          Logit averaging and stopword removal
 lgb_2505      0.2143             ??????             0.2202          More FE - Price & Item Seq ratios over category/title
 lgb_2405D     0.2145             ??????             0.2204          Price ratios over category/title   
 lgb_2405      0.2152             ??????             0.2211          pymorph on text
