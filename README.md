@@ -11,7 +11,7 @@ lgb_2205      0.2153             ??????             0.2213          Add oof ridg
 rnn_2205      0.2149             ??????             0.2215          Russian text processing
 lgb_2205      0.2157             ??????             0.2215          Add oof ridge feature on text data
 mlp_1905      0.2159             ??????             0.2217          Add in different kinds for grouping continuous
-mlp_1704A     0.2162             ??????             0.2217          Add in aggregate features from active files
+mlp_1705      0.2162             0.21875            0.2217          Add in aggregate features from active files
 rnn_2105      0.2153             ??????             0.2221          RNN only submission, more regularization .2153 on validation
 mlp_1605B     0.2166             ??????             0.2224          Add all item titles from avctive files per user
 lgb_2105C     0.2162             ??????             0.2225          Add count and encoding
