@@ -1,7 +1,6 @@
-
 # https://www.kaggle.com/tunguz/bow-meta-text-and-dense-features-lgbm-clone?scriptVersionId=3540839
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from scipy.stats import itemfreq
 from scipy import ndimage as ndi
 import matplotlib.pyplot as plt
@@ -11,26 +10,15 @@ import numpy as np
 import pandas as pd 
 import operator
 import cv2
-import os, time
-
-
-
-images_path = '../input/sampleavitoimages/sample_avito_images/'
-imgs = os.listdir(images_path)
-
-features = pd.DataFrame()
-features['image'] = imgs
-
-#path = '../input/'
-path = "/home/darragh/avito/data/"
-#path = '/Users/dhanley2/Documents/avito/data/'
-
-# path = '/home/ubuntu/avito/data/'
+import os, time, io, gc
+from subprocess import check_output
+import zipfile
+from PIL import Image
+import datetime
+import tqdm
 start_time = time.time()
-full = False
-validation = False
+import zipfile
 
-print('[{}] Load Train/Test'.format(time.time() - start_time))
 
 def color_analysis(img):
     # obtain the color palatte of the image 
@@ -51,7 +39,6 @@ def color_analysis(img):
     light_percent = round((float(light_shade)/shade_count)*100, 2)
     dark_percent = round((float(dark_shade)/shade_count)*100, 2)
     return light_percent, dark_percent
-
 
 def perform_color_analysis(img, flag):
     path = images_path + img 
@@ -93,11 +80,38 @@ def get_average_color(img):
     average_color = [img[:, :, i].mean() for i in range(img.shape[-1])]
     return average_color
 
+def perform_color_analysis2(img, speedup = True):
+    path = images_path + img 
+    im = IMG.open(path) #.convert("RGB")
+    
+    # cut the images into two halves as complete average may give bias results
+    size = im.size
+    if speedup:
+        im = im.resize((256, 256), Image.ANTIALIAS)
+    halves = (size[0]/2, size[1]/2)
+    im1 = im.crop((0, 0, size[0], halves[1]))
+    im2 = im.crop((0, halves[1], size[0], size[1]))
 
+    try:
+        light_percent1, dark_percent1 = color_analysis(im1)
+        light_percent2, dark_percent2 = color_analysis(im2)
+    except Exception as e:
+        return None, None
 
-def get_dominant_color(img):
+    light_percent = (light_percent1 + light_percent2)/2 
+    dark_percent = (dark_percent1 + dark_percent2)/2 
+    
+    return dark_percent, light_percent, size
+
+def get_metas(img, speedup = True):
     path = images_path + img 
     img = cv2.imread(path)
+    if speedup:
+        img = cv2.resize(img, (256, 256))
+    average_color = [img[:, :, i].mean() for i in range(img.shape[-1])]
+    bimg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurness = cv2.Laplacian(bimg, cv2.CV_64F).var()
+    img = cv2.resize(img, (96, 96))
     arr = np.float32(img)
     pixels = arr.reshape((-1, 3))
 
@@ -111,72 +125,60 @@ def get_dominant_color(img):
     quantized = quantized.reshape(img.shape)
 
     dominant_color = palette[np.argmax(itemfreq(labels)[:, -1])]
-    return dominant_color
+    return dominant_color, average_color, blurness
 
+def image_features(img):
+    c0, c1, sz = perform_color_analysis2(img)
+    dom, avg, blur = get_metas(img)
+    d0, d1, d2 =  dom / 255.
+    a0, a1, a2 = np.array(avg) / 255.
+    isz = getSize(img)
+    w, h = sz
+    # 'name', 'dullness', 'whiteness', 'dominant_red', 'dominant_green', 'dominant_blue', 'average_red', 
+    # 'average_green', 'average_blue', 'width', 'height', 'size', 'blurness'
+    return img, c0, c1, d0, d1, d2, a0, a1, a2, w, h, isz, blur
 
 def getSize(filename):
     filename = images_path + filename
     st = os.stat(filename)
     return st.st_size
 
-def getDimensions(filename):
-    filename = images_path + filename
-    img_size = IMG.open(filename).size
-    return img_size 
+def chunks(l, n):
+    n = max(1, n)
+    return (l[i:i+n] for i in range(0, len(l), n))
 
-def get_blurrness_score(image):
-    path =  images_path + image 
-    image = cv2.imread(path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    fm = cv2.Laplacian(image, cv2.CV_64F).var()
-    return fm
+'''
 
+img =  '0b53d1fefa09d55c35c0b1d78f376b6c32525e38780701c45caae683118e7d02.jpg'
+image_features(img)
+'''
+#path = '../input/'
+path = "/home/darragh/avito/data/"
+#path = '/Users/dhanley2/Documents/tdata/data/'
+path = '/home/ubuntu/tdata/data/'
 
-features['dullness'] = features['image'].apply(lambda x : perform_color_analysis(x, 'black'))
-topdull = features.sort_values('dullness', ascending = False)
-topdull.head(5)
+images_path = path + 'imgs/'
+images_files = path + 'image_files/'
 
-features['whiteness'] = features['image'].apply(lambda x : perform_color_analysis(x, 'white'))
-topdull = features.sort_values('whiteness', ascending = False)
-topdull.head(5)
+split_images = True
+chunks       = 6
+if split_images:
+    imgls = os.listdir(images_path)
+    len(imgls)
+    for t, chunk in enumerate(np.array_split(imgls,chunks)):
+        pd.Series(chunk).to_csv(images_files + 'img_list_%s.csv'%(t))
+        
 
-features['dominant_color'] = features['image'].apply(get_dominant_color)
-features.head(10)
+# Get features for chunk
+process_chunk = 0
+infile = images_files  + 'img_list_%s.csv'%(process_chunk)
+df = pd.read_csv(infile, header = None, names = ['images'])
+imgfeat = [image_features(i) for i in df['images'].tolist()]
 
-features['dominant_red'] = features['dominant_color'].apply(lambda x: x[0]) / 255
-features['dominant_green'] = features['dominant_color'].apply(lambda x: x[1]) / 255
-features['dominant_blue'] = features['dominant_color'].apply(lambda x: x[2]) / 255
-features[['dominant_red', 'dominant_green', 'dominant_blue']].head(5)
+# Write file
+header = ['name', 'dullness', 'whiteness', 'dominant_red', 'dominant_green', 'dominant_blue', 'average_red', \
+     'average_green', 'average_blue', 'width', 'height', 'size', 'blurness']
 
-
-features['average_color'] = features['image'].apply(get_average_color)
-features.head(10)
-
-features['average_red'] = features['average_color'].apply(lambda x: x[0]) / 255
-features['average_green'] = features['average_color'].apply(lambda x: x[1]) / 255
-features['average_blue'] = features['average_color'].apply(lambda x: x[2]) / 255
-features[['average_red', 'average_green', 'average_blue']].head(5)
-
-
-
-features['image_size'] = features['image'].apply(getSize)
-features['temp_size'] = features['image'].apply(getDimensions)
-features['width'] = features['temp_size'].apply(lambda x : x[0])
-features['height'] = features['temp_size'].apply(lambda x : x[1])
-features = features.drop(['temp_size', 'average_color', 'dominant_color'], axis=1)
-features.head()
-
-
-features['blurrness'] = features['image'].apply(get_blurrness_score)
-features[['image','blurrness']].head(5)
-
-
-im1 = IMG.open(images_path+'59.png')
-im2 = im1.convert(mode='L')
-im = np.asarray(im2)
-
-edges1 = feature.canny(im, sigma=1)
-edges2 = feature.canny(im, sigma=3) 
-
-
-
+imgfeatdf = pd.DataFrame(imgfeat, columns = header)
+imgfeatdf.head()
+imgfeatdf.to_csv(images_files + 'img_features_%s.csv'%(process_chunk), index = False)
