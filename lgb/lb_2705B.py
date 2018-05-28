@@ -23,7 +23,6 @@ from multiprocessing import cpu_count, Pool
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
-
 # path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = True
