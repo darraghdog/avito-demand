@@ -38,6 +38,11 @@ print('Train shape: {} Rows, {} Columns'.format(*traindf.shape))
 print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 traindf['activation_date'].value_counts()
 
+(traindf['image_top_1'] == traindf['image_top_1']).value_counts()
+(testdf['image_top_1'] == testdf['image_top_1']).value_counts()
+
+
+
 print('[{}] Create Validation Index'.format(time.time() - start_time))
 if full:
     trnidx = (traindf.activation_date<=pd.to_datetime('2017-03-28')).values
