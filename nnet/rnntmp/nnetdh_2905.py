@@ -396,7 +396,7 @@ lr_init, lr_fin = 0.0014, 0.00001
 lr_decay  = (lr_init - lr_fin)/steps
 
 
-bags      = 2
+bags      = 3
 y_pred_ls = []
 y_sub_ls  = []
 for b in range(bags):
@@ -455,7 +455,7 @@ for i in range(epochs):
     print(i,' ',np.argsort(res)[i,0], ':', res[i,np.argsort(res)[i,0]])
 
 i=6
-j=27
+j=26
 y_sub = sum([sum(to_logit(y_sub_ls[i+epochs*bag:j+epochs*bag]))/len(y_sub_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags
 rnnsub = pd.DataFrame(to_proba(y_sub),columns=["deal_probability"],index=testdex)
 rnnsub['deal_probability'] = rnnsub['deal_probability'] # Between 0 and 1

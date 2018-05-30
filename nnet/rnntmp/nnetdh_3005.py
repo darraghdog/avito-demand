@@ -2,7 +2,7 @@
 # Models Packages
 from sklearn import metrics
 from sklearn.metrics import mean_squared_error
-import time, gc
+import time, gc, gzip
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
@@ -16,6 +16,7 @@ import plotly.offline as plt
 import plotly.graph_objs as go
 from numba import jit
 import nltk, re
+from tqdm import tqdm
 from nltk.corpus import stopwords
 from nltk.tokenize import ToktokTokenizer
 import pymorphy2
@@ -46,7 +47,7 @@ path = "/home/darragh/avito/data/"
 start_time = time.time()
 
 validation = False
-full       = True
+full       = False
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
@@ -223,12 +224,13 @@ def fit_sequence(str_, tkn_, filt = True):
 
 print('[{}] Finished FITTING TEXT DATA...'.format(time.time() - start_time))
 tok_raw = myTokenizerFit(df['description'].loc[traindex].values.tolist()+df['title'].loc[traindex].values.tolist(), max_words = 80000)
-print('[{}] Finished PROCESSING TEXT DATA...'.format(time.time() - start_time))
 
 df["title"]       = fit_sequence(df.title, tok_raw)
 df["description"] = fit_sequence(df.description, tok_raw)
 df["title"]       = [l if len(l)>0 else [0] for l in df["title"]]
 gc.collect()
+
+print('[{}] Finished PROCESSING TEXT DATA...'.format(time.time() - start_time))
 
 
 MAX_DSC = max(tok_raw.values())+1
@@ -241,7 +243,31 @@ cont_cols = [c for c in df.columns if 'cont_' in c]
 #TEST DOESNT HAVE ANY 1s
 bin_cols=[x for x in bin_cols if x!='bin_no_description']
 
+print('[{}] Load Embeddings'.format(time.time() - start_time))
+EMBEDDING_FILE=f'{path}../features/cc.ru.300.vec.gz'
+embed_size = 300 # how big is each word vector
+tok_set = set(tok_raw.keys())
 
+def get_word(word,*arr): return word.decode("utf-8")
+def get_coefs(word,*arr): return np.asarray(arr, dtype='float32')
+embeddings_index = {}
+for o in tqdm(gzip.open(EMBEDDING_FILE)):
+    word = get_word(*o.strip().split())
+    if word in tok_set:
+        embeddings_index[word] = get_coefs(*o.strip().split())
+
+# Set up the matrix array 
+all_embs = np.stack(embeddings_index.values())
+emb_mean,emb_std = all_embs.mean(), all_embs.std()
+emb_mean,emb_std
+del all_embs
+gc.collect()
+embedding_matrix = np.random.normal(emb_mean, emb_std, (MAX_DSC, embed_size))
+for word, i in tok_raw.items():
+    embedding_vector = embeddings_index.get(word)
+    if embedding_vector is not None: embedding_matrix[i] = embedding_vector
+
+list(tok_raw.keys())[:10]
 
 print('[{}] Finished FEATURE CREATION'.format(time.time() - start_time))
 
@@ -344,9 +370,14 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
 
     #Embeddings layers
     #emb_size = 64
-    embs_text = Embedding(MAX_DSC, emb_size, embeddings_regularizer=l2(l2_val), embeddings_constraint=FreezePadding())
-    emb_dsc = embs_text(description)
-    emb_ttl = embs_text(title)
+    #embs_text = Embedding(MAX_DSC, emb_size, embeddings_regularizer=l2(l2_val), embeddings_constraint=FreezePadding())
+    #emb_dsc = embs_text(description)
+    #emb_ttl = embs_text(title)
+    emb_ttl = Embedding(MAX_DSC, embed_size, weights=[embedding_matrix],\
+                          embeddings_regularizer=l2(l2_val), embeddings_constraint=FreezePadding())(title)
+    emb_dsc = Embedding(MAX_DSC, embed_size, weights=[embedding_matrix],\
+                          embeddings_regularizer=l2(l2_val), embeddings_constraint=FreezePadding())(description)
+
 
     # GRU Layer
     rnn_dsc = (CuDNNGRU(emb_size))(emb_dsc)
@@ -428,7 +459,7 @@ for b in range(bags):
         print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred_ls[-1].flatten())))
         if len(y_pred_ls)>1:
             y_pred = sum(y_pred_ls)/len(y_pred_ls)
-            print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))            
+            print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))
         gc.collect()
         
 def to_logit(ls):
@@ -459,7 +490,7 @@ j=26
 y_sub = sum([sum(to_logit(y_sub_ls[i+epochs*bag:j+epochs*bag]))/len(y_sub_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags
 rnnsub = pd.DataFrame(to_proba(y_sub),columns=["deal_probability"],index=testdex)
 rnnsub['deal_probability'] = rnnsub['deal_probability'] # Between 0 and 1
-rnnsub.to_csv(path+"../sub/rnndhsub_2705A.csv.gz",index=True,header=True, compression = 'gzip')
+rnnsub.to_csv(path+"../sub/rnndhsub_3005.csv.gz",index=True,header=True, compression = 'gzip')
 # print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 # print("Notebook Runtime: %0.2f Minutes"%((time.time() - notebookstart)/60))
 
