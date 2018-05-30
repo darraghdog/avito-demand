@@ -35,7 +35,7 @@ from keras.regularizers import l2
 from keras.constraints import non_neg, Constraint
 from keras.utils.data_utils import Sequence
 from sklearn import preprocessing
-
+import math
 
 path = "../"
 #path = '../input/'
@@ -46,7 +46,7 @@ path = "/home/darragh/avito/data/"
 start_time = time.time()
 
 validation = False
-full       = False
+full       = True
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
@@ -301,6 +301,9 @@ tst_sorted_ix = np.array(map_sort(dtest ["title"].tolist(), dtest ["description"
 
 y_pred_epochs = []
 
+
+
+
 def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
 
     def root_mean_squared_error(y_true, y_pred):
@@ -375,6 +378,7 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
 
     #model
     model = Model([title, description] + [inp for inp in emb_inputs.values()] + [bin_vars] + [cont_vars] + [img_layer], output)
+    #optimizer = optimizers.Adam(clipnorm=10)
     optimizer = optimizers.Adam(clipvalue=0.5)
     model.compile(loss=root_mean_squared_error,
                   optimizer=optimizer, metrics=['mae'])
@@ -382,6 +386,8 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     return model
 
 
+# https://github.com/keras-team/keras/issues/1370
+#norm = math.sqrt(sum(np.sum(K.get_value(w)) for w in model.optimizer.weights))
 
 epochs = 27
 batchSize = 512
@@ -389,7 +395,8 @@ steps = (dtrain.shape[0]/batchSize+1)*epochs
 lr_init, lr_fin = 0.0014, 0.00001
 lr_decay  = (lr_init - lr_fin)/steps
 
-bags      = 3
+
+bags      = 2
 y_pred_ls = []
 y_sub_ls  = []
 for b in range(bags):
@@ -438,7 +445,7 @@ for i in range(epochs):
         preds = sum([sum(to_logit(y_pred_ls[i+epochs*bag:j+epochs*bag]))/len(y_pred_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags
         res[i,j] = np.sqrt(metrics.mean_squared_error(dvalid['target'], to_proba(preds.flatten())))
 
-        if res[i, j]<0.2144:
+        if res[i, j]<0.2146:
             print(i,' to ',j, 'RMSE bags:', res[i,j])
 # 5  to  15 RMSE bags: 0.2149315159490983
 # 8  to  27 RMSE bags: 0.21418619733068925 with images concantenated and 128 emb size
