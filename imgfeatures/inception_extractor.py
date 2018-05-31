@@ -33,14 +33,17 @@ from keras.models import Model
 
 # Params
 path = "/home/darragh/avito/data/"
-#path = '/Users/dhanley2/Documents/avito/data/'
-path = "/home/ubuntu/avito/data/"
+path = '/Users/dhanley2/Documents/avito/data/'
+#path = "/home/ubuntu/avito/data/"
 #base_model = VGG19(weights='imagenet')
-#base_model = InceptionV3(weights='imagenet')
-base_model = DenseNet121(weights='imagenet')
+# http://josephpcohen.com/w/wp-content/uploads/inception-v3.pdf
+base_model = InceptionV3(weights='imagenet')
+#base_model = DenseNet121(weights='imagenet')
 #base_model = MobileNet(weights='imagenet')
 
 base_model.summary()
+2048*8*8
+
 #model.summary()
 
 # model = Model(inputs=base_model.input, outputs=base_model.get_layer('block5_pool').output)
@@ -61,7 +64,7 @@ for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg',
     file_ls   = []
     csr_ls    = [] 
     myzip = zipfile.ZipFile(path + '%s.zip'%(file_)) # zipfile.ZipFile('../input/avito-demand-prediction/train_jpg.zip')
-    files_in_zip = myzip.namelist()[:10]
+    files_in_zip = myzip.namelist()
     img_ls = []
     for idx, file in tqdm(enumerate(files_in_zip), total = len(files_in_zip)):
         if file.endswith('.jpg'):
@@ -91,7 +94,6 @@ for file_ in ['test_jpg', 'train_jpg']: # ,'test_jpg',
     del mattst, file_ls, csr_ls
     gc.collect()
 
-
 for file_ in ['test', 'train']: # ,'test_jpg',
     file_
     fnamemat = path + '../features/densenet_pool_mat_%s_jpg.npy'%(file_)
@@ -111,7 +113,7 @@ for file_ in ['test', 'train']: # ,'test_jpg',
     print(allmat[fseqidx].shape)
     print(mattst.shape)
     allmat[fseqidx] = mattst
-    allmat = allmat.tocsr()
+    #allmat = allmat.tocsr()
     fname = path + '../features/densenet_pool_array_%s'%(file_)
-    sparse.save_npz(fname, allmat)
+    np.save(fname, allmat)
 

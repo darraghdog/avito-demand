@@ -63,7 +63,7 @@ def load_data(full):
     gc.collect()
     df = df.reset_index().merge(featusrcat[keep], on = ['user_id', 'parent_category_name'])
     df.head(2)
-    df = pd.concat([df.reset_index(),featimgprd, featrdgprc],axis=1).set_index('item_id')
+    df = pd.concat([df.reset_index(),featimgprc, featrdgprc],axis=1).set_index('item_id')
     print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))  
     
     dtrain = df.loc[traindex,:][trnidx].reset_index()
@@ -82,12 +82,8 @@ def common_users(varin, col, cutoff = 3):
     return var.astype(str).values
 
 def preprocess(df: pd.DataFrame) -> pd.DataFrame:
-    df['price_log'] = np.log1p(df['price'].fillna(0).values)
-    df['user_avg_price_log'] = np.log1p(df['usercat_avg_price'].fillna(0).values)
-    df['user_ad_ct_log'] = np.log1p(df['user_ad_ct'].fillna(0).values)
-    df['usercat_ad_ct_log'] = np.log1p(df['usercat_ad_ct'].fillna(0).values)
-    df['item_seq_number_cut_log'] = np.log1p(df['item_seq_number'].fillna(0).values) 
-    
+    for col in cont_cols:
+        df[ col + '_log'] = np.log1p(.011111 + df[col].fillna(0).values)
     df['name']      = df['title'].fillna('') 
     df['text']      = (df['description'].fillna('') + ' ' + df['title'] + ' ' \
       + df['parent_category_name'].fillna('') + ' ' + df['category_name'].fillna('') \
@@ -110,7 +106,7 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
      
     return df[['name', 'text', 'user', 'region', 'city', 'item_seq_number_cut', 'all_titles', 'user_avg_price_cut'\
                , 'user_type', 'price_cut', 'image_top_1', 'param_1', 'param_3', 'param_3', 'user_ad_ct'\
-               , 'usercat_avg_price_cut', 'usercat_ad_ct']]
+               , 'usercat_avg_price_cut', 'usercat_ad_ct']+ [col+'_log' for col in cont_cols]]
 
 def on_field(f: str, *vec) -> Pipeline:
     return make_pipeline(FunctionTransformer(itemgetter(f), validate=False), *vec)
@@ -140,7 +136,7 @@ def fit_predict(xs, y_train) -> np.ndarray:
 
 def main(full = False):
     vectorizer = make_union(
-        on_field(['price_log', 'user_avg_price_log', 'user_ad_ct_log', 'usercat_ad_ct_log', 'item_seq_number_cut_log'], StandardScaler()),
+        on_field([col+'_log' for col in cont_cols], StandardScaler()),
         on_field('name',       Tfidf(max_features=15000 , token_pattern='\w+')), #100000
         on_field('all_titles', Tfidf(max_features=80000 , token_pattern='\w+')), #100000
         #on_field('user_categories', Tfidf(max_features=10000 , token_pattern='\w+')), #100000
@@ -174,7 +170,7 @@ def main(full = False):
     return y_pred, tstdex
 
 if __name__ == '__main__':
-    cont_cols = [ 'price', 'user_avg_price', 'user_ad_ct', 'usercat_ad_ct', 'item_seq_number_cut'\
+    cont_cols = [ 'price', 'user_avg_price', 'user_ad_ct', 'usercat_ad_ct', 'item_seq_number' \
     , 'cat_price_iratio', 'reg_price_iratio', 'reg_price_gratio','cty_price_gratio' \
     , 'pcat_price_rratio', 'pcat_itseq_rratio', 'cat_price_rratio', 'cat_itseq_rratio', 'ttl_price_rratio', 'ttl_itseq_rratio'\
     , 'dscr_price_rratio', 'pcat_log_price_rratio', 'pcat_log_itseq_rratio', 'user_log_price_rratio']

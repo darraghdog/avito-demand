@@ -23,7 +23,6 @@ from multiprocessing import cpu_count, Pool
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 path = '/Users/dhanley2/Documents/avito/data/'
-
 # path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = False
@@ -39,6 +38,11 @@ traindf.drop("deal_probability",axis=1, inplace=True)
 print('Train shape: {} Rows, {} Columns'.format(*traindf.shape))
 print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 traindf['activation_date'].value_counts()
+
+(traindf['image_top_1'] == traindf['image_top_1']).value_counts()
+(testdf['image_top_1'] == testdf['image_top_1']).value_counts()
+
+
 
 print('[{}] Create Validation Index'.format(time.time() - start_time))
 if full:
@@ -59,6 +63,17 @@ print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
 #df['NA_count_rows'] = df.isnull().sum(axis=1)
 
 print('[{}] Load engineered features'.format(time.time() - start_time))
+featimgmeta = pd.concat([pd.read_csv(path + '../features/img_features_%s.csv.gz'%(i)) for i in range(6)])
+featimgmeta.rename(columns = {'name':'image'}, inplace = True)
+featimgmeta['image'] = featimgmeta['image'].str.replace('.jpg', '')
+df['image'].isin(featimgmeta['image']).value_counts()
+df = df.reset_index('item_id').merge(featimgmeta, on = ['image'], how = 'left').set_index('item_id')
+for col in featimgmeta.columns.values[1:]:
+    df[col].fillna(-1, inplace = True)
+    df[col].astype(np.float32, inplace = True)
+df.isnull().sum()   
+
+
 featlatlon = pd.read_csv(path + '../features/avito_region_city_features.csv') # https://www.kaggle.com/frankherfert/region-and-city-details-with-lat-lon-and-clusters
 featlatlon.drop(['city_region', 'city_region_id', 'region_id'], 1, inplace = True)
 featpop    = pd.read_csv(path + '../features/city_population_wiki_v3.csv') # https://www.kaggle.com/stecasasso/russian-city-population-from-wikipedia/comments
@@ -97,6 +112,11 @@ df.sort_values('idx', inplace = True)
 df.drop(['idx'], axis=1,inplace=True)
 df.reset_index(inplace = True)
 
+df.head()
+df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc],axis=1)
+#df['ridge_txt'] = featrdgtxt['ridge_preds'].values
+#df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
+
 print('[{}] Create folds'.format(time.time() - start_time))
 foldls = [["2017-03-15", "2017-03-16", "2017-03-17"], \
        ["2017-03-18", "2017-03-19", "2017-03-20"], \
@@ -111,11 +131,6 @@ for t, fold in enumerate(foldls):
     df['fold'][df.activation_date.isin(fold)] = t
 df['fold'].value_counts()
 df.head()
-
-print('[{}] Concat features'.format(time.time() - start_time))
-df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc],axis=1)
-#df['ridge_txt'] = featrdgtxt['ridge_preds'].values
-#df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
 
 df['ridge_img'] = featrdgimg['ridge_img_preds'].values
 df = df.set_index('item_id')
@@ -276,9 +291,8 @@ lgbm_params = {
     'learning_rate' : 0.02,
     'feature_fraction' : 0.5,
     'verbosity' : 0
-}
-
-# Placeholder for predictions
+}    
+    # Placeholder for predictions
 df['fold'].value_counts()
 y_pred_trn = pd.Series(-np.zeros(df.loc[traindex,:].shape[0]), index = traindex)
 y_pred_tst = pd.Series(-np.zeros(df.loc[testdex ,:].shape[0]), index = testdex)
@@ -326,135 +340,94 @@ lgsub.set_index('item_id', inplace = True)
 print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, lgsub.loc[traindex])))
 # RMSE for all : 0.2168
 
-lgsub.to_csv("../sub/lgCV_2705B.csv.gz",index=True,header=True, compression = 'gzip')
-
-
-
-print('[{}] Check small val'.format(time.time() - start_time))
-
-uc = [ "item_id", "activation_date"]
-traindtdf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", usecols = uc, parse_dates = ["activation_date"], compression = 'zip')
-val_ = (traindtdf.activation_date>=pd.to_datetime('2017-03-27')).values
-del traindtdf
-gc.collect()
-print('Small val RMSE:', np.sqrt(metrics.mean_squared_error(y[val_].values, lgsub.loc[traindex][val_]['deal_probability'].values)))
+lgsub.to_csv("../sub/lgCV_3105.csv.gz",index=True,header=True, compression = 'gzip')
 
 '''
-RMSE: 0.21685925689423727
-Fold 1 [6264.987998247147] Modeling Stage
-Fold 1 : 1176264 Rows and 84131 Cols
-Fold 1 : 327160 Rows and 84131 Cols
-Model Evaluation Stage
-RMSE: 0.21710519208638274
-Fold 2 [10797.713494062424] Modeling Stage
-Fold 2 : 1176532 Rows and 84131 Cols
-Fold 2 : 326892 Rows and 84131 Cols
-Model Evaluation Stage
-RMSE: 0.21793062341379857
-Fold 3 [15297.772420167923] Modeling Stage
-Fold 3 : 1195456 Rows and 84131 Cols
-Fold 3 : 307968 Rows and 84131 Cols
-Model Evaluation Stage
-RMSE: 0.21760263866603652
-Fold 4 [19938.804013967514] Modeling Stage
-Fold 4 : 1275576 Rows and 84131 Cols
-Fold 4 : 227848 Rows and 84131 Cols
-Model Evaluation Stage
-RMSE: 0.21370101242787842
-Fold 5 [24428.887626886368] Modeling Stage
-Fold 5 : 1503424 Rows and 84131 Cols
-Fold 5 : 508438 Rows and 84131 Cols
-Model Evaluation Stage
-RMSE for all : 0.21681527582821059
 
-'''
-'''
-[20]    train's rmse: 0.241067  valid's rmse: 0.238745
-[40]    train's rmse: 0.231096  valid's rmse: 0.228946
-[60]    train's rmse: 0.225209  valid's rmse: 0.223373
-[80]    train's rmse: 0.221705  valid's rmse: 0.220237
-[100]   train's rmse: 0.219561  valid's rmse: 0.218494
-[120]   train's rmse: 0.218128  valid's rmse: 0.217437
-[140]   train's rmse: 0.217073  valid's rmse: 0.216777
-[160]   train's rmse: 0.216199  valid's rmse: 0.216298
-[180]   train's rmse: 0.215447  valid's rmse: 0.215955
-[200]   train's rmse: 0.214788  valid's rmse: 0.215687
-[220]   train's rmse: 0.214184  valid's rmse: 0.215482
-[240]   train's rmse: 0.213626  valid's rmse: 0.215307
-[260]   train's rmse: 0.213091  valid's rmse: 0.215162
-[280]   train's rmse: 0.21258   valid's rmse: 0.21506
-[300]   train's rmse: 0.21209   valid's rmse: 0.214951
-[320]   train's rmse: 0.211617  valid's rmse: 0.214841
-[340]   train's rmse: 0.211161  valid's rmse: 0.214736
-[360]   train's rmse: 0.210718  valid's rmse: 0.214633
-[380]   train's rmse: 0.210292  valid's rmse: 0.214546
-[400]   train's rmse: 0.209875  valid's rmse: 0.214472
-[420]   train's rmse: 0.20947   valid's rmse: 0.214397
-[440]   train's rmse: 0.209083  valid's rmse: 0.214327
-[460]   train's rmse: 0.208707  valid's rmse: 0.214275
-[480]   train's rmse: 0.208356  valid's rmse: 0.214234
-[500]   train's rmse: 0.208004  valid's rmse: 0.214178
-[520]   train's rmse: 0.207672  valid's rmse: 0.214145
-[540]   train's rmse: 0.20735   valid's rmse: 0.2141
-[560]   train's rmse: 0.207049  valid's rmse: 0.214077
-[580]   train's rmse: 0.20676   valid's rmse: 0.214061
-[600]   train's rmse: 0.20648   valid's rmse: 0.214045
-[620]   train's rmse: 0.206205  valid's rmse: 0.214026
-[640]   train's rmse: 0.205933  valid's rmse: 0.214006
-[660]   train's rmse: 0.205665  valid's rmse: 0.21399
-[680]   train's rmse: 0.205415  valid's rmse: 0.213976
-[700]   train's rmse: 0.205148  valid's rmse: 0.213959
-[720]   train's rmse: 0.204869  valid's rmse: 0.213932
-[740]   train's rmse: 0.204637  valid's rmse: 0.21392
-[760]   train's rmse: 0.20441   valid's rmse: 0.213907
-[780]   train's rmse: 0.204186  valid's rmse: 0.213899
-[800]   train's rmse: 0.203952  valid's rmse: 0.213894
-[820]   train's rmse: 0.203721  valid's rmse: 0.213885
-[840]   train's rmse: 0.203491  valid's rmse: 0.213879
-[860]   train's rmse: 0.203222  valid's rmse: 0.213863
-[880]   train's rmse: 0.202981  valid's rmse: 0.213854
-[900]   train's rmse: 0.202755  valid's rmse: 0.213848
-[920]   train's rmse: 0.202523  valid's rmse: 0.213841
-[940]   train's rmse: 0.202312  valid's rmse: 0.213834
-[960]   train's rmse: 0.202092  valid's rmse: 0.213824
-[980]   train's rmse: 0.201883  valid's rmse: 0.213824
-[1000]  train's rmse: 0.201678  valid's rmse: 0.213818
-[1020]  train's rmse: 0.201451  valid's rmse: 0.213809
-[1040]  train's rmse: 0.201234  valid's rmse: 0.213804
-[1060]  train's rmse: 0.201035  valid's rmse: 0.213799
-[1080]  train's rmse: 0.200809  valid's rmse: 0.213795
-[1100]  train's rmse: 0.200605  valid's rmse: 0.213792
-[1120]  train's rmse: 0.200397  valid's rmse: 0.213787
-[1140]  train's rmse: 0.200205  valid's rmse: 0.213789
-[1160]  train's rmse: 0.199969  valid's rmse: 0.213773
-[1180]  train's rmse: 0.199753  valid's rmse: 0.213769
-[1200]  train's rmse: 0.199551  valid's rmse: 0.213765
-[1220]  train's rmse: 0.199356  valid's rmse: 0.213765
-[1240]  train's rmse: 0.199155  valid's rmse: 0.213761
-[1260]  train's rmse: 0.198966  valid's rmse: 0.213757
-[1280]  train's rmse: 0.198764  valid's rmse: 0.213755
-[1300]  train's rmse: 0.198554  valid's rmse: 0.213752
-[1320]  train's rmse: 0.198348  valid's rmse: 0.213755
-[1340]  train's rmse: 0.198134  valid's rmse: 0.213745
-[1360]  train's rmse: 0.197927  valid's rmse: 0.213741
-[1380]  train's rmse: 0.197738  valid's rmse: 0.213739
-[1400]  train's rmse: 0.197536  valid's rmse: 0.213734
-[1420]  train's rmse: 0.197358  valid's rmse: 0.213733
-[1440]  train's rmse: 0.197156  valid's rmse: 0.213726
-[1460]  train's rmse: 0.196978  valid's rmse: 0.213731
-[1480]  train's rmse: 0.196777  valid's rmse: 0.213724
-[1500]  train's rmse: 0.196571  valid's rmse: 0.213719
-[1520]  train's rmse: 0.196372  valid's rmse: 0.213716
-[1540]  train's rmse: 0.196192  valid's rmse: 0.213716
-[1560]  train's rmse: 0.195982  valid's rmse: 0.213715
-[1580]  train's rmse: 0.195796  valid's rmse: 0.213713
-[1600]  train's rmse: 0.195604  valid's rmse: 0.213707
-[1620]  train's rmse: 0.195409  valid's rmse: 0.213704
-[1640]  train's rmse: 0.195222  valid's rmse: 0.213703
-[1660]  train's rmse: 0.195047  valid's rmse: 0.213705
-[1680]  train's rmse: 0.194863  valid's rmse: 0.213703
-[1700]  train's rmse: 0.194684  valid's rmse: 0.213704
-[1720]  train's rmse: 0.194511  valid's rmse: 0.213702
+[20]    train's rmse: 0.24083   valid's rmse: 0.23851
+[40]    train's rmse: 0.230468  valid's rmse: 0.228373
+[60]    train's rmse: 0.224788  valid's rmse: 0.223037
+[80]    train's rmse: 0.221476  valid's rmse: 0.220127
+[100]   train's rmse: 0.219445  valid's rmse: 0.21847
+[120]   train's rmse: 0.218033  valid's rmse: 0.21746
+[140]   train's rmse: 0.216963  valid's rmse: 0.216775
+[160]   train's rmse: 0.216071  valid's rmse: 0.216285
+[180]   train's rmse: 0.215311  valid's rmse: 0.21594
+[200]   train's rmse: 0.214628  valid's rmse: 0.21568
+[220]   train's rmse: 0.214013  valid's rmse: 0.215466
+[240]   train's rmse: 0.213438  valid's rmse: 0.215302
+[260]   train's rmse: 0.212895  valid's rmse: 0.215151
+[280]   train's rmse: 0.212377  valid's rmse: 0.215019
+[300]   train's rmse: 0.21188   valid's rmse: 0.214887
+[320]   train's rmse: 0.211412  valid's rmse: 0.214791
+[340]   train's rmse: 0.210953  valid's rmse: 0.21469
+[360]   train's rmse: 0.210505  valid's rmse: 0.214594
+[380]   train's rmse: 0.210067  valid's rmse: 0.214502
+[400]   train's rmse: 0.209638  valid's rmse: 0.214429
+[420]   train's rmse: 0.20922   valid's rmse: 0.214344
+[440]   train's rmse: 0.208806  valid's rmse: 0.214278
+[460]   train's rmse: 0.208394  valid's rmse: 0.214214
+[480]   train's rmse: 0.208005  valid's rmse: 0.214162
+[500]   train's rmse: 0.207627  valid's rmse: 0.214103
+[520]   train's rmse: 0.207255  valid's rmse: 0.214062
+[540]   train's rmse: 0.206892  valid's rmse: 0.214003
+[560]   train's rmse: 0.206541  valid's rmse: 0.213968
+[580]   train's rmse: 0.206186  valid's rmse: 0.213922
+[600]   train's rmse: 0.205853  valid's rmse: 0.213887
+[620]   train's rmse: 0.205532  valid's rmse: 0.213858
+[640]   train's rmse: 0.205217  valid's rmse: 0.213828
+[660]   train's rmse: 0.204931  valid's rmse: 0.213812
+[680]   train's rmse: 0.20463   valid's rmse: 0.213795
+[700]   train's rmse: 0.204318  valid's rmse: 0.213771
+[720]   train's rmse: 0.204027  valid's rmse: 0.213752
+[740]   train's rmse: 0.203758  valid's rmse: 0.213741
+[760]   train's rmse: 0.203467  valid's rmse: 0.213725
+[780]   train's rmse: 0.203207  valid's rmse: 0.213717
+[800]   train's rmse: 0.20294   valid's rmse: 0.213701
+[820]   train's rmse: 0.202678  valid's rmse: 0.213685
+[840]   train's rmse: 0.202418  valid's rmse: 0.21367
+[860]   train's rmse: 0.202182  valid's rmse: 0.213659
+[880]   train's rmse: 0.201914  valid's rmse: 0.213643
+[900]   train's rmse: 0.201658  valid's rmse: 0.213625
+[920]   train's rmse: 0.201426  valid's rmse: 0.213618
+[940]   train's rmse: 0.201186  valid's rmse: 0.213606
+[960]   train's rmse: 0.200954  valid's rmse: 0.2136
+[980]   train's rmse: 0.200726  valid's rmse: 0.213596
+[1000]  train's rmse: 0.200494  valid's rmse: 0.213591
+[1020]  train's rmse: 0.200268  valid's rmse: 0.213584
+[1040]  train's rmse: 0.200025  valid's rmse: 0.213576
+[1060]  train's rmse: 0.199792  valid's rmse: 0.213572
+[1080]  train's rmse: 0.199571  valid's rmse: 0.213568
+[1100]  train's rmse: 0.199339  valid's rmse: 0.213563
+[1120]  train's rmse: 0.199091  valid's rmse: 0.213542
+[1140]  train's rmse: 0.19886   valid's rmse: 0.213539
+[1160]  train's rmse: 0.198639  valid's rmse: 0.213527
+[1180]  train's rmse: 0.198415  valid's rmse: 0.213516
+[1200]  train's rmse: 0.198193  valid's rmse: 0.213515
+[1220]  train's rmse: 0.19797   valid's rmse: 0.21351
+[1240]  train's rmse: 0.197751  valid's rmse: 0.213506
+[1260]  train's rmse: 0.19753   valid's rmse: 0.2135
+[1280]  train's rmse: 0.197298  valid's rmse: 0.213494
+[1300]  train's rmse: 0.197081  valid's rmse: 0.213494
+[1320]  train's rmse: 0.196858  valid's rmse: 0.213495
+[1340]  train's rmse: 0.196626  valid's rmse: 0.213485
+[1360]  train's rmse: 0.196407  valid's rmse: 0.213478
+[1380]  train's rmse: 0.196214  valid's rmse: 0.213478
+[1400]  train's rmse: 0.19602   valid's rmse: 0.213476
+[1420]  train's rmse: 0.195823  valid's rmse: 0.213474
+[1440]  train's rmse: 0.195614  valid's rmse: 0.213472
+[1460]  train's rmse: 0.195404  valid's rmse: 0.213471
+[1480]  train's rmse: 0.195214  valid's rmse: 0.213465
+[1500]  train's rmse: 0.195011  valid's rmse: 0.213463
+[1520]  train's rmse: 0.194784  valid's rmse: 0.213456
+[1540]  train's rmse: 0.19459   valid's rmse: 0.213454
+[1560]  train's rmse: 0.194387  valid's rmse: 0.213449
+[1580]  train's rmse: 0.194195  valid's rmse: 0.213449
+[1600]  train's rmse: 0.193999  valid's rmse: 0.213439
+[1620]  train's rmse: 0.193783  valid's rmse: 0.213435
+[1640]  train's rmse: 0.19358   valid's rmse: 0.21344
+[1660]  train's rmse: 0.193394  valid's rmse: 0.21344
 Early stopping, best iteration is:
-[1676]  train's rmse: 0.194902  valid's rmse: 0.213701
+[1615]  train's rmse: 0.193827  valid's rmse: 0.213434
+
 '''

@@ -63,7 +63,7 @@ def load_data(full):
     gc.collect()
     df = df.reset_index().merge(featusrcat[keep], on = ['user_id', 'parent_category_name'])
     df.head(2)
-    df = pd.concat([df.reset_index(),featimgprd, featrdgprc],axis=1).set_index('item_id')
+    df = pd.concat([df.reset_index(),featimgprc, featrdgprc],axis=1).set_index('item_id')
     print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))  
     
     dtrain = df.loc[traindex,:][trnidx].reset_index()
@@ -82,22 +82,20 @@ def common_users(varin, col, cutoff = 3):
     return var.astype(str).values
 
 def preprocess(df: pd.DataFrame) -> pd.DataFrame:
-    df['price_log'] = np.log1p(df['price'].fillna(0).values)
-    df['user_avg_price_log'] = np.log1p(df['usercat_avg_price'].fillna(0).values)
-    df['user_ad_ct_log'] = np.log1p(df['user_ad_ct'].fillna(0).values)
-    df['usercat_ad_ct_log'] = np.log1p(df['usercat_ad_ct'].fillna(0).values)
-    df['item_seq_number_cut_log'] = np.log1p(df['item_seq_number'].fillna(0).values) 
-    
+    for col in cont_cols:
+        #df[ col + '_log'] = np.log1p(.011111 + df[col].fillna(0).values)
+        df[col + '_cut'] = col + '_' + np.log1p(df[col]*5.0001).fillna(10000).astype(np.int32).astype(str)
+
     df['name']      = df['title'].fillna('') 
     df['text']      = (df['description'].fillna('') + ' ' + df['title'] + ' ' \
       + df['parent_category_name'].fillna('') + ' ' + df['category_name'].fillna('') \
       + df['param_1'].fillna('') + df['param_2'].fillna('') + df['param_3'].fillna(''))
-    df['price_cut'] = 'pc_'+(np.log1p(df['price'])*5).fillna(150).astype(np.int32).astype(str)
-    df['user_avg_price_cut'] = 'apc_'+(np.log1p(df['user_avg_price'])*5).fillna(10000).astype(np.int32).astype(str)
-    df['usercat_avg_price_cut'] = 'capc_'+(np.log1p(df['usercat_avg_price'])*5).fillna(10000).astype(np.int32).astype(str)
-    df['user_ad_ct'] = 'uac_'+(np.log1p(df['user_ad_ct'])*5).fillna(10000).astype(np.int32).astype(str)
-    df['usercat_ad_ct'] = 'ucac_'+(np.log1p(df['usercat_ad_ct'])*5).fillna(10000).astype(np.int32).astype(str)
-    df['item_seq_number_cut'] = 'is_'+(np.log1p(df['item_seq_number'])*5).fillna(150).astype(np.int32).astype(str)
+    #df['price_cut'] = 'pc_'+(np.log1p(df['price'])*5).fillna(150).astype(np.int32).astype(str)
+    #df['user_avg_price_cut'] = 'apc_'+(np.log1p(df['user_avg_price'])*5).fillna(10000).astype(np.int32).astype(str)
+    #df['usercat_avg_price_cut'] = 'capc_'+(np.log1p(df['usercat_avg_price'])*5).fillna(10000).astype(np.int32).astype(str)
+    #df['user_ad_ct'] = 'uac_'+(np.log1p(df['user_ad_ct'])*5).fillna(10000).astype(np.int32).astype(str)
+    #df['usercat_ad_ct'] = 'ucac_'+(np.log1p(df['usercat_ad_ct'])*5).fillna(10000).astype(np.int32).astype(str)
+    #df['item_seq_number_cut'] = 'is_'+(np.log1p(df['item_seq_number'])*5).fillna(150).astype(np.int32).astype(str)
     df['user']    = common_users(df['user_id'], 'user_id')
     df['image_top_1'] = 'img_'+ df['image_top_1'].fillna(3100).astype(str)
     df['region']  = 'rgn_'+ df['region'].fillna('').astype(str)
@@ -108,9 +106,9 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     df['parent_category_name'] = 'pc1_'+ df['parent_category_name'].fillna('').astype(str)
     df['category_name'] = 'c2_'+ df['category_name'].fillna('').astype(str)
      
-    return df[['name', 'text', 'user', 'region', 'city', 'item_seq_number_cut', 'all_titles', 'user_avg_price_cut'\
-               , 'user_type', 'price_cut', 'image_top_1', 'param_1', 'param_3', 'param_3', 'user_ad_ct'\
-               , 'usercat_avg_price_cut', 'usercat_ad_ct']]
+    return df[['name', 'text', 'user', 'region', 'city', 'all_titles' \
+               , 'user_type', 'image_top_1', 'param_1', 'param_3', 'param_3', \
+               ]+ [col+'_cut' for col in cont_cols]]
 
 def on_field(f: str, *vec) -> Pipeline:
     return make_pipeline(FunctionTransformer(itemgetter(f), validate=False), *vec)
@@ -140,14 +138,14 @@ def fit_predict(xs, y_train) -> np.ndarray:
 
 def main(full = False):
     vectorizer = make_union(
-        on_field(['price_log', 'user_avg_price_log', 'user_ad_ct_log', 'usercat_ad_ct_log', 'item_seq_number_cut_log'], StandardScaler()),
+        on_field([col+'_cut' for col in cont_cols], FunctionTransformer(to_records, validate=False), DictVectorizer()),
         on_field('name',       Tfidf(max_features=15000 , token_pattern='\w+')), #100000
         on_field('all_titles', Tfidf(max_features=80000 , token_pattern='\w+')), #100000
         #on_field('user_categories', Tfidf(max_features=10000 , token_pattern='\w+')), #100000
         on_field('text',       Tfidf(max_features=60000, token_pattern='\w+', ngram_range=(1, 2))), #100000
-        on_field(['region', 'city', 'price_cut', 'item_seq_number_cut', 'image_top_1', 'user_avg_price_cut', \
-                  'param_1', 'param_3', 'param_3', 'user_type', 'user', 'user_ad_ct', 'usercat_avg_price_cut', 'usercat_ad_ct'],
-                 FunctionTransformer(to_records, validate=False), DictVectorizer()),
+        #on_field(['region', 'city', 'price_cut', 'item_seq_number_cut', 'image_top_1', 'user_avg_price_cut', \
+        #          'param_1', 'param_3', 'param_3', 'user_type', 'user', 'user_ad_ct', 'usercat_avg_price_cut', 'usercat_ad_ct'],
+        #         FunctionTransformer(to_records, validate=False), DictVectorizer()),
         n_jobs=4)
     y_scaler = StandardScaler()
     with timer('process train'):
@@ -174,16 +172,19 @@ def main(full = False):
     return y_pred, tstdex
 
 if __name__ == '__main__':
-    cont_cols = [ 'price', 'user_avg_price', 'user_ad_ct', 'usercat_ad_ct', 'item_seq_number_cut'\
+    cont_cols = [ 'price', 'user_avg_price', 'user_ad_ct', 'usercat_ad_ct', 'item_seq_number' \
     , 'cat_price_iratio', 'reg_price_iratio', 'reg_price_gratio','cty_price_gratio' \
     , 'pcat_price_rratio', 'pcat_itseq_rratio', 'cat_price_rratio', 'cat_itseq_rratio', 'ttl_price_rratio', 'ttl_itseq_rratio'\
     , 'dscr_price_rratio', 'pcat_log_price_rratio', 'pcat_log_itseq_rratio', 'user_log_price_rratio']
+    
+    #cont_cols = [ 'price', 'user_avg_price', 'item_seq_number']
+    
     full = False
     y_pred, idx = main(full)
     if full: 
         mlpsub = pd.DataFrame(y_pred,columns=["deal_probability"],index=idx)
         mlpsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
-        mlpsub.to_csv("../sub/mlpsub_2905.csv.gz",index=True,header=True, compression = 'gzip')
+        mlpsub.to_csv("../sub/mlpsub_2905B.csv.gz",index=True,header=True, compression = 'gzip')
         print("All done")
 
     
@@ -191,3 +192,4 @@ if __name__ == '__main__':
 # Valid RMSE: 0.2165 ... avg price per user
 # Valid RMSE: 0.2163 ... user Ad ct
 # Valid RMSE: 0.2162 ... Parent category average price, count
+# Valid RMSE: 0.2162
