@@ -452,7 +452,7 @@ for f in range(6):
                         y_pred_tst[:] = sum(y_sub_ls)/len(y_sub_ls)
                 else:
                     print('RMSE:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_sub_ls[-1].flatten())))
-                    if len(y_pred_ls)>1:
+                    if len(y_sub_ls)>1:
                         y_pred = sum(y_sub_ls)/len(y_sub_ls)
                         print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_pred.flatten()))) 
                         y_pred_trn[~trnidx] = y_pred
