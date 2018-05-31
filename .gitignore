@@ -9,4 +9,4 @@ nohup*
 *.gz
 *.zip
 *.csv
-*.ipynb*
+*checkpoint*

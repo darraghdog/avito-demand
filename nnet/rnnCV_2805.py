@@ -281,16 +281,6 @@ class Seq_generator(Sequence):
         return X
 
 
-# dtrain = df.loc[traindex,:][trnidx].reset_index()
-# dvalid = df.loc[traindex,:][validx].reset_index()
-# dtest  = df.loc[testdex,:].reset_index()
-# dtrain['target'] = y[trnidx].values
-# dvalid['target'] = y[validx].values
-
-
-# train_sorted_ix = np.array(map_sort(dtrain["title"].tolist(), dtrain["description"].tolist()))
-# val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
-# tst_sorted_ix = np.array(map_sort(dtest ["title"].tolist(), dtest ["description"].tolist()))
 
 y_pred_epochs = []
 
