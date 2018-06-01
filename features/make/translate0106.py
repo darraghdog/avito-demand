@@ -6,7 +6,7 @@ import time, gc
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
-from nltk.corpus import stopwords 
+from nltk.corpus import stopwords
 from sklearn.pipeline import FeatureUnion
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from scipy.sparse import hstack, csr_matrix
@@ -26,10 +26,9 @@ from textblob.translate import NotTranslated
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 path = '/Users/dhanley2/Documents/avito/data/'
+path = '/home/ubuntu/avito/data/'
 
 
-
-# path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = False
 validation = False
@@ -44,7 +43,7 @@ print('Train shape: {} Rows, {} Columns'.format(*traindf.shape))
 print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 
 print('[{}] Combine Train and Test'.format(time.time() - start_time))
-df = pd.concat([traindf,testdf],axis=0)
+df = traindf # pd.concat([traindf,testdf],axis=0)
 del traindf,testdf
 gc.collect()
 df['idx'] = range(df.shape[0])
@@ -68,7 +67,7 @@ def translate(comment, language):
 
     return str(text)
 
-parallel = Parallel(-1, backend="threading", verbose=5)
+parallel = Parallel(16, backend="threading", verbose=5)
 
 col = 'category_name'
 def translate_col(df, col, language = 'en'):
@@ -78,13 +77,16 @@ def translate_col(df, col, language = 'en'):
     df = df.reset_index().merge(trdf, on = col).sort_values('idx').set_index('item_id')
     return df
 
-df = df[:100]
+# df = df[:100]
 for col in ['parent_category_name', 'category_name', 'param_1', 'param_2', 'param_3', 'title', 'description']:
     print('-'*50)
+    print('[{}]'.format(time.time() - start_time))
     print('Translating %s'%(col))
     print('-'*50)
     df = translate_col(df, col, language = 'en')
-    df[[c for c in df.columns if 'translate' in c]].to_pickle(path+'../features/translate.pkl')
+    df[[c for c in df.columns if 'translate' in c]].to_pickle(path+'../features/translate_en1.pkl')
 
-df[[c for c in df.columns if 'translate' in c]].to_csv(path+'../features/translate.csv')
+df[[c for c in df.columns if 'translate' in c]].to_csv(path+'../features/translate_en1.csv')
+
+
 
