@@ -343,6 +343,35 @@ print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, lgsub.loc[traindex
 lgsub.to_csv("../sub/lgCV_3105.csv.gz",index=True,header=True, compression = 'gzip')
 
 '''
+RMSE: 0.216550108974991
+Fold 1 [5821.617654085159] Modeling Stage
+Fold 1 : 1176264 Rows and 84143 Cols
+Fold 1 : 327160 Rows and 84143 Cols
+Model Evaluation Stage
+RMSE: 0.21665335389484172
+Fold 2 [10376.067844867706] Modeling Stage
+Fold 2 : 1176532 Rows and 84143 Cols
+Fold 2 : 326892 Rows and 84143 Cols
+Model Evaluation Stage
+RMSE: 0.21924013131763104
+Fold 3 [14929.770159959793] Modeling Stage
+Fold 3 : 1195456 Rows and 84143 Cols
+Fold 3 : 307968 Rows and 84143 Cols
+Model Evaluation Stage
+RMSE: 0.2171740856960129
+Fold 4 [19466.896036863327] Modeling Stage
+Fold 4 : 1275576 Rows and 84143 Cols
+Fold 4 : 227848 Rows and 84143 Cols
+Model Evaluation Stage
+RMSE: 0.21343940208204443
+Fold 5 [24007.50591492653] Modeling Stage
+Fold 5 : 1503424 Rows and 84143 Cols
+Fold 5 : 508438 Rows and 84143 Cols
+Model Evaluation Stage
+RMSE for all : 0.21681135578306754
+'''
+
+'''
 
 [20]    train's rmse: 0.24083   valid's rmse: 0.23851
 [40]    train's rmse: 0.230468  valid's rmse: 0.228373
