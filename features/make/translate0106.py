@@ -68,7 +68,7 @@ def translate(comment, language):
 
     return str(text)
 
-parallel = Parallel(4, backend="threading", verbose=5)
+parallel = Parallel(-1, backend="threading", verbose=5)
 
 col = 'category_name'
 def translate_col(df, col, language = 'en'):
