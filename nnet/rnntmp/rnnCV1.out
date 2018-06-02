@@ -1,0 +1,184 @@
+nohup: ignoring input
+/home/ubuntu/anaconda3/lib/python3.6/site-packages/h5py/__init__.py:34: FutureWarning:
+
+Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+
+Using TensorFlow backend.
+[1.430511474609375e-06] Load Train/Test
+Train shape: 1503424 Rows, 16 Columns
+Test shape: 508438 Rows, 16 Columns
+[27.301621913909912] Create Validation Index
+[27.305736780166626] Load Densenet image features
+[143.01561284065247] Combine Train and Test
+
+All Data shape: 2011862 Rows, 17 Columns
+[144.00218176841736] Create folds
+nnetdh5CV_2705A.py:102: SettingWithCopyWarning:
+
+
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+
+[146.68826532363892] Missing values
+[147.70869278907776] Feature Engineering Price
+[148.31626653671265] Create Time Variables
+[148.91739130020142] Text Features
+[220.74491953849792] Categoricals with some low counts
+[241.02471947669983] Encode Variables
+Label encode emb_item_seq_number
+Label encode user_id
+Label encode image_top_1
+Label encode region
+Label encode city
+Label encode emb_price
+Label encode parent_category_name
+Label encode category_name
+Label encode user_type
+Label encode emb_weekday
+Label encode text_feat
+Label encode cat_param_1
+Label encode cat_param_2
+Label encode cat_param_3
+[288.98231172561646] Scale Variables
+Scale cont_log_price
+Scale cont_log_item_seq_number
+[289.0416781902313] Embedding dimensions
+{'emb_item_seq_number': 6, 'user_id': 12, 'image_top_1': 9, 'region': 5, 'city': 9, 'emb_price': 6, 'parent_category_name': 4, 'category_name': 5, 'user_type': 3, 'emb_weekday': 3, 'text_feat': 9, 'cat_param_1': 7, 'cat_param_2': 7, 'cat_param_3': 8}
+[289.15765047073364] Clean text and tokenize
+Tokenise description
+Tokenise title
+[1249.8210098743439] Finished tokenizing text...
+[1249.8434274196625] Finished FITTING TEXT DATA...
+[1289.0720283985138] Finished PROCESSING TEXT DATA...
+[1336.1564948558807] Finished FEATURE CREATION
+Fold 0 [1339.5848081111908] Modeling Stage
+WARNING:tensorflow:From /home/ubuntu/anaconda3/lib/python3.6/site-packages/tensorflow/contrib/learn/python/learn/datasets/base.py:198: retry (from tensorflow.contrib.learn.python.learn.datasets.base) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use the retry module or similar alternatives.
+2018-05-31 19:27:57.732904: I tensorflow/core/platform/cpu_feature_guard.cc:140] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2018-05-31 19:28:00.424288: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:898] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2018-05-31 19:28:00.424620: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1344] Found device 0 with properties: 
+name: Tesla K80 major: 3 minor: 7 memoryClockRate(GHz): 0.8235
+pciBusID: 0000:00:1e.0
+totalMemory: 11.17GiB freeMemory: 11.10GiB
+2018-05-31 19:28:00.424641: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1423] Adding visible gpu devices: 0
+2018-05-31 19:28:00.654084: I tensorflow/core/common_runtime/gpu/gpu_device.cc:911] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-05-31 19:28:00.654130: I tensorflow/core/common_runtime/gpu/gpu_device.cc:917]      0 
+2018-05-31 19:28:00.654139: I tensorflow/core/common_runtime/gpu/gpu_device.cc:930] 0:   N 
+2018-05-31 19:28:00.654415: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1041] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10765 MB memory) -> physical GPU (device: 0, name: Tesla K80, pci bus id: 0000:00:1e.0, compute capability: 3.7)
+RMSE: 0.22021763996857216
+RMSE: 0.21989303576418848
+RMSE bags: 0.21929622565682272
+RMSE: 0.22027639774096874
+RMSE bags: 0.21903957535829638
+RMSE: 0.22014562685432235
+RMSE bags: 0.21886686455292698
+RMSE: 0.22043619635733605
+RMSE bags: 0.21882614397725633
+RMSE: 0.22037887467198114
+RMSE bags: 0.2186617530765131
+RMSE: 0.21994818416312661
+RMSE bags: 0.2185360590989274
+RMSE: 0.22043073111077296
+RMSE bags: 0.21845728799169276
+RMSE: 0.22118958039676326
+RMSE bags: 0.2184993569237619
+RMSE: 0.22070835212795847
+RMSE bags: 0.21845687665424465
+RMSE: 0.22152004924641236
+RMSE bags: 0.21850178847615817
+RMSE: 0.22098176832095737
+RMSE bags: 0.21850520371368584
+RMSE: 0.22144863064911338
+RMSE bags: 0.21844841902309547
+RMSE: 0.22185733479141714
+RMSE bags: 0.21848073409789634
+RMSE: 0.22239010498371634
+RMSE bags: 0.21848473866782403
+RMSE: 0.22207429721160174
+RMSE bags: 0.21848724882724047
+RMSE: 0.2234115322879282
+RMSE bags: 0.2185453582439749
+RMSE: 0.22281882282983004
+RMSE bags: 0.21857453798760892
+RMSE: 0.22307436784133342
+RMSE bags: 0.2186053788064965
+RMSE: 0.22073048491606828
+RMSE bags: 0.21850622539571093
+RMSE: 0.22008559924845755
+RMSE bags: 0.21844837690638574
+RMSE: 0.2203799798016467
+RMSE bags: 0.21839961875916075
+RMSE: 0.22010589695901256
+RMSE bags: 0.21836946668565058
+RMSE: 0.22090300754188189
+RMSE bags: 0.21836597808461997
+RMSE: 0.22000932349856092
+RMSE bags: 0.2183360970494754
+RMSE: 0.22102282571413182
+RMSE bags: 0.21834325940624263
+RMSE: 0.2207997477303138
+RMSE bags: 0.2183398583309977
+RMSE: 0.22073998581931722
+RMSE bags: 0.21832320519055268
+RMSE: 0.2209455379299553
+RMSE bags: 0.2183116178597509
+RMSE: 0.2215717369264627
+RMSE bags: 0.21832323109950663
+RMSE: 0.22162000297332915
+RMSE bags: 0.21832017352536257
+RMSE: 0.22223861360254465
+RMSE bags: 0.21831228167732422
+RMSE: 0.22170806259051576
+RMSE bags: 0.2182926088250663
+RMSE: 0.2221535550062087
+RMSE bags: 0.2182868372519202
+RMSE: 0.22271714154700184
+RMSE bags: 0.21827714035882798
+RMSE: 0.22240856488046243
+RMSE bags: 0.21828680423540592
+RMSE: 0.2226791392995293
+RMSE bags: 0.21828379878999352
+RMSE: 0.2226307791686579
+RMSE bags: 0.21829128404383186
+RMSE: 0.22047837778914142
+RMSE bags: 0.21827674833260677
+RMSE: 0.22046476555837954
+RMSE bags: 0.21826010241181512
+RMSE: 0.2204709851856572
+RMSE bags: 0.21821998677435442
+RMSE: 0.22033293276438362
+RMSE bags: 0.21819900328370392
+RMSE: 0.22013991883453157
+RMSE bags: 0.21818366570397918
+RMSE: 0.22026478750874218
+RMSE bags: 0.2181748664669642
+RMSE: 0.22074157692430588
+RMSE bags: 0.21817272258394288
+RMSE: 0.22095810035864882
+RMSE bags: 0.2181715298452381
+RMSE: 0.22128919326500227
+RMSE bags: 0.21817278035991874
+RMSE: 0.22101437508461613
+RMSE bags: 0.21816704435993248
+RMSE: 0.22125775377397652
+RMSE bags: 0.21816713184725067
+RMSE: 0.2217117140724559
+RMSE bags: 0.21816473734526776
+RMSE: 0.22137381378537693
+RMSE bags: 0.21814951955738482
+RMSE: 0.2213828128101531
+RMSE bags: 0.2181454095252148
+RMSE: 0.22181164442523307
+RMSE bags: 0.21813891408166494
+RMSE: 0.22145735621357712
+RMSE bags: 0.21812801729186956
+RMSE: 0.22229685003815558
+RMSE bags: 0.2181183697092418
+RMSE: 0.22290877869118803
+RMSE bags: 0.21810571463628925
+RMSE: 0.22336067394005893
+RMSE bags: 0.21809731885254327
+Fold 1 [12112.283031702042] Modeling Stage
+RMSE: 0.22135064284771966

@@ -1,0 +1,58 @@
+nohup: ignoring input
+[5.245208740234375e-06] Load Train/Test
+Train shape: 1503424 Rows, 17 Columns
+Test shape: 508438 Rows, 17 Columns
+[27.81857705116272] Create Validation Index
+[27.823095321655273] Combine Train and Test
+
+All Data shape: 2011862 Rows, 18 Columns
+[31.01125979423523] Missing values
+[32.05260491371155] Feature Engineering Price
+[32.5439133644104] Create Time Variables
+-1    508438
+ 1    327160
+ 2    326892
+ 0    313556
+ 3    307968
+ 4    227848
+Name: fold, dtype: int64
+[33.782289266586304] Text Features
+[106.02064347267151] Categoricals with some low counts
+[126.52959036827087] Encode Variables
+Label encode emb_item_seq_number
+Label encode user_id
+Label encode image_top_1
+Label encode region
+Label encode city
+Label encode emb_price
+Label encode parent_category_name
+Label encode category_name
+Label encode user_type
+Label encode emb_weekday
+Label encode text_feat
+Label encode cat_param_1
+Label encode cat_param_2
+Label encode cat_param_3
+[178.14251494407654] Scale Variables
+Scale cont_log_price
+Scale cont_log_item_seq_number
+[178.23259615898132] Embedding dimensions
+{'emb_item_seq_number': 6, 'user_id': 2, 'image_top_1': 9, 'region': 5, 'city': 9, 'emb_price': 6, 'parent_category_name': 4, 'category_name': 5, 'user_type': 3, 'emb_weekday': 3, 'text_feat': 9, 'cat_param_1': 7, 'cat_param_2': 7, 'cat_param_3': 8}
+[178.4684281349182] Clean text and tokenize
+Tokenise description
+/home/ubuntu/anaconda3/lib/python3.6/site-packages/h5py/__init__.py:34: FutureWarning:
+
+Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+
+Using TensorFlow backend.
+rnnFT5CV_0106A.py:121: SettingWithCopyWarning:
+
+
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+
+/home/ubuntu/anaconda3/lib/python3.6/site-packages/sklearn/utils/validation.py:475: DataConversionWarning:
+
+Data with input dtype int64 was converted to float64 by StandardScaler.
+
