@@ -39,3 +39,11 @@ mlp_1605B     ????               ??????             0.2208          Weighted avg
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
 ```
+
+Word embeddings
+==============================
+```
+features/wiki.ru.vec                  - https://github.com/facebookresearch/fastText/blob/master/pretrained-vectors.md
+cc.ru.300.vec.gz                      - https://github.com/facebookresearch/fastText/blob/master/docs/crawl-vectors.md
+all.norm-sz100-w10-cb0-it1-min100.w2v - http://panchenko.me/data/dsl-backup/w2v-ru/
+```
