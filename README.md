@@ -40,7 +40,7 @@ Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
 ```
 
-Word embeddings
+### Word embeddings
 ==============================
 ```
 features/wiki.ru.vec                  - https://github.com/facebookresearch/fastText/blob/master/pretrained-vectors.md
