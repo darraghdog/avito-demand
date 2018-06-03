@@ -495,7 +495,7 @@ gc.collect()
 
 
 df['rnn_preds'] = 0.
-for f in range(6):
+for f in range(3, 6):
     gc.collect()
     print("DOING FOLD {}".format(f))
     if f==5:
@@ -509,7 +509,7 @@ for f in range(6):
     dvalid = df[validx]
     df['rnn_preds'][validx] = train_model(dtrain, dvalid)
     print('RMSE:', np.sqrt(metrics.mean_squared_error( df[validx]['deal_probability'], df[validx]['rnn_preds'])))
-    df[['rnn_preds']].to_csv('../sub/rnnCV_0106A_tmp.csv.gz', index=True, header=True, compression='gzip')
+    df[['rnn_preds']].to_csv('../sub/rnnCV_0106A_tmp1.csv.gz', index=True, header=True, compression='gzip')
     gc.collect()
 
 
