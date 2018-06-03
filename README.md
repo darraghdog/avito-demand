@@ -2,7 +2,8 @@
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
-lgb_3105      0.2134             ??????             0.2190          Meta image features
+lgb_0206      0.2132             0.2162             ??????          Add title translation as col and tfidf it
+lgb_3105      0.2134             0.2168             0.2190          Meta image features
 lgb_2705B     0.2137             0.2168             0.2194          imgtop1 ratios;longer early stopping;remove categorical
 lgb_2705A     0.2139             ??????             0.2197          Remove categoricals, add image_top_1 price ratio
 lgb_2505      0.2143             0.2167             0.2202          More FE - Price & Item Seq ratios over category/title
@@ -38,6 +39,7 @@ mlp_1605B     ????               ??????             0.2208          Weighted avg
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
+L1GBM_0306A   ??????             ?????              0.2167          Included title translation LGB 
 ```
 
 ### Word embeddings
