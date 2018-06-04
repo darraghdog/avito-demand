@@ -453,7 +453,8 @@ def train_model(dtrain, dvalid):
             	y_pred_avg = sum(y_pred_ls)/len(y_pred_ls)
             	print('Avg RMSE:', np.sqrt(metrics.mean_squared_error( dvalid['deal_probability'], y_pred_avg)))
             	gc.collect()
-
+        del model
+        gc.collect()
                 
     def to_logit(ls):
         ls=np.array(ls)

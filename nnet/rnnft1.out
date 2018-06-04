@@ -1,0 +1,757 @@
+nohup: ignoring input
+[5.9604644775390625e-06] Load Train/Test
+Train shape: 1503424 Rows, 17 Columns
+Test shape: 508438 Rows, 17 Columns
+[28.10707926750183] Create Validation Index
+[28.11146855354309] Combine Train and Test
+
+All Data shape: 2011862 Rows, 18 Columns
+[31.327265977859497] Missing values
+[32.42079424858093] Feature Engineering Price
+[32.9310998916626] Create Time Variables
+-1    508438
+ 1    327160
+ 2    326892
+ 0    313556
+ 3    307968
+ 4    227848
+Name: fold, dtype: int64
+[34.2031352519989] Text Features
+[108.66198658943176] Categoricals with some low counts
+[129.31642246246338] Encode Variables
+Label encode emb_item_seq_number
+Label encode user_id
+Label encode image_top_1
+Label encode region
+Label encode city
+Label encode emb_price
+Label encode parent_category_name
+Label encode category_name
+Label encode user_type
+Label encode emb_weekday
+Label encode text_feat
+Label encode cat_param_1
+Label encode cat_param_2
+Label encode cat_param_3
+[182.37472701072693] Scale Variables
+Scale cont_log_price
+Scale cont_log_item_seq_number
+[182.46315050125122] Embedding dimensions
+{'emb_item_seq_number': 6, 'user_id': 2, 'image_top_1': 9, 'region': 5, 'city': 9, 'emb_price': 6, 'parent_category_name': 4, 'category_name': 5, 'user_type': 3, 'emb_weekday': 3, 'text_feat': 9, 'cat_param_1': 7, 'cat_param_2': 7, 'cat_param_3': 8}
+[182.70122170448303] Clean text and tokenize
+Tokenise description
+/home/ubuntu/anaconda3/lib/python3.6/site-packages/h5py/__init__.py:34: FutureWarning:
+
+Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+
+Using TensorFlow backend.
+rnnFT5CV_0106A.py:121: SettingWithCopyWarning:
+
+
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+
+/home/ubuntu/anaconda3/lib/python3.6/site-packages/sklearn/utils/validation.py:475: DataConversionWarning:
+
+Data with input dtype int64 was converted to float64 by StandardScaler.
+
+Tokenise title
+  0%|          | 0/80000 [00:00<?, ?it/s] 35%|███▍      | 27980/80000 [00:00<00:00, 279738.24it/s] 77%|███████▋  | 61648/80000 [00:00<00:00, 308198.04it/s]100%|██████████| 80000/80000 [00:00<00:00, 333704.94it/s]2018-06-03 10:05:12.682588: I tensorflow/core/platform/cpu_feature_guard.cc:140] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2018-06-03 10:05:15.444478: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:898] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2018-06-03 10:05:15.444809: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1344] Found device 0 with properties: 
+name: Tesla K80 major: 3 minor: 7 memoryClockRate(GHz): 0.8235
+pciBusID: 0000:00:1e.0
+totalMemory: 11.17GiB freeMemory: 11.10GiB
+2018-06-03 10:05:15.444831: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1423] Adding visible gpu devices: 0
+2018-06-03 10:05:15.691578: I tensorflow/core/common_runtime/gpu/gpu_device.cc:911] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-06-03 10:05:15.691632: I tensorflow/core/common_runtime/gpu/gpu_device.cc:917]      0 
+2018-06-03 10:05:15.691641: I tensorflow/core/common_runtime/gpu/gpu_device.cc:930] 0:   N 
+2018-06-03 10:05:15.691951: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1041] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10765 MB memory) -> physical GPU (device: 0, name: Tesla K80, pci bus id: 0000:00:1e.0, compute capability: 3.7)
+
+WARNING:tensorflow:From /home/ubuntu/anaconda3/lib/python3.6/site-packages/tensorflow/contrib/learn/python/learn/datasets/base.py:198: retry (from tensorflow.contrib.learn.python.learn.datasets.base) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use the retry module or similar alternatives.
+[1163.8300249576569] Finished tokenizing text...
+[1163.851325750351] Finished FITTING TEXT DATA...
+[1204.1410148143768] Finished PROCESSING TEXT DATA...
+[1253.394600868225] Finished FEATURE CREATION
+DOING FOLD 3
+Epoch 1/1
+ - 185s - loss: 1.5723 - mean_absolute_error: 0.1534
+Bag 0, epoch 0
+Epoch 2/2
+ - 180s - loss: 0.2304 - mean_absolute_error: 0.1476
+Bag 0, epoch 1
+Epoch 3/3
+ - 181s - loss: 0.2289 - mean_absolute_error: 0.1446
+Bag 0, epoch 2
+Epoch 4/4
+ - 181s - loss: 0.2269 - mean_absolute_error: 0.1427
+Bag 0, epoch 3
+Epoch 5/5
+ - 180s - loss: 0.2264 - mean_absolute_error: 0.1416
+Bag 0, epoch 4
+Epoch 6/6
+ - 180s - loss: 0.2257 - mean_absolute_error: 0.1407
+Bag 0, epoch 5
+Epoch 7/7
+ - 180s - loss: 0.2246 - mean_absolute_error: 0.1398
+Bag 0, epoch 6
+Epoch 8/8
+ - 180s - loss: 0.2245 - mean_absolute_error: 0.1393
+Bag 0, epoch 7
+Epoch 9/9
+ - 180s - loss: 0.2241 - mean_absolute_error: 0.1386
+Bag 0, epoch 8
+RMSE: 0.22178141482990948
+Avg RMSE: 0.22178141482990948
+Epoch 10/10
+ - 180s - loss: 0.2243 - mean_absolute_error: 0.1382
+Bag 0, epoch 9
+RMSE: 0.2218142618845008
+Avg RMSE: 0.22075851549692346
+Epoch 11/11
+ - 180s - loss: 0.2237 - mean_absolute_error: 0.1375
+Bag 0, epoch 10
+RMSE: 0.2218625804404927
+Avg RMSE: 0.2205266937741751
+Epoch 12/12
+ - 180s - loss: 0.2236 - mean_absolute_error: 0.1369
+Bag 0, epoch 11
+RMSE: 0.22223389057446535
+Avg RMSE: 0.22043066306982803
+Epoch 13/13
+ - 180s - loss: 0.2234 - mean_absolute_error: 0.1365
+Bag 0, epoch 12
+RMSE: 0.2218423691876952
+Avg RMSE: 0.22023203825634502
+Epoch 14/14
+ - 180s - loss: 0.2236 - mean_absolute_error: 0.1360
+Bag 0, epoch 13
+RMSE: 0.222346064791214
+Avg RMSE: 0.22018826396706823
+Epoch 15/15
+ - 181s - loss: 0.2230 - mean_absolute_error: 0.1357
+Bag 0, epoch 14
+RMSE: 0.22275532800809983
+Avg RMSE: 0.2201693958116601
+Epoch 16/16
+ - 180s - loss: 0.2236 - mean_absolute_error: 0.1353
+Bag 0, epoch 15
+RMSE: 0.2225624707855795
+Avg RMSE: 0.22017329238253416
+Epoch 17/17
+ - 181s - loss: 0.2265 - mean_absolute_error: 0.1358
+Bag 0, epoch 16
+RMSE: 0.22931815034184866
+Avg RMSE: 0.22031371447585543
+Epoch 18/18
+ - 180s - loss: 0.8218 - mean_absolute_error: 0.1433
+Bag 0, epoch 17
+RMSE: 0.22632104232259664
+Avg RMSE: 0.22037377093377894
+Epoch 1/1
+ - 183s - loss: 1.5638 - mean_absolute_error: 0.1535
+Bag 1, epoch 0
+Epoch 2/2
+ - 181s - loss: 0.2304 - mean_absolute_error: 0.1473
+Bag 1, epoch 1
+Epoch 3/3
+ - 181s - loss: 0.2281 - mean_absolute_error: 0.1445
+Bag 1, epoch 2
+Epoch 4/4
+ - 181s - loss: 0.2268 - mean_absolute_error: 0.1424
+Bag 1, epoch 3
+Epoch 5/5
+ - 181s - loss: 0.2258 - mean_absolute_error: 0.1413
+Bag 1, epoch 4
+Epoch 6/6
+ - 181s - loss: 0.2251 - mean_absolute_error: 0.1403
+Bag 1, epoch 5
+Epoch 7/7
+ - 181s - loss: 0.2242 - mean_absolute_error: 0.1397
+Bag 1, epoch 6
+Epoch 8/8
+ - 181s - loss: 0.2241 - mean_absolute_error: 0.1391
+Bag 1, epoch 7
+Epoch 9/9
+ - 181s - loss: 0.2237 - mean_absolute_error: 0.1386
+Bag 1, epoch 8
+RMSE: 0.2217150261848214
+Avg RMSE: 0.2202570026110469
+Epoch 10/10
+ - 181s - loss: 0.2238 - mean_absolute_error: 0.1382
+Bag 1, epoch 9
+RMSE: 0.22161043870259767
+Avg RMSE: 0.22015731692319543
+Epoch 11/11
+ - 181s - loss: 0.2243 - mean_absolute_error: 0.1378
+Bag 1, epoch 10
+RMSE: 0.22183323210198522
+Avg RMSE: 0.220100087385547
+Epoch 12/12
+ - 181s - loss: 0.2234 - mean_absolute_error: 0.1375
+Bag 1, epoch 11
+RMSE: 0.22195403649974424
+Avg RMSE: 0.22006050777355973
+Epoch 13/13
+ - 181s - loss: 0.2232 - mean_absolute_error: 0.1369
+Bag 1, epoch 12
+RMSE: 0.22126252574495028
+Avg RMSE: 0.2199648035033727
+Epoch 14/14
+ - 181s - loss: 0.2233 - mean_absolute_error: 0.1365
+Bag 1, epoch 13
+RMSE: 0.22193934001690765
+Avg RMSE: 0.21990563271330218
+Epoch 15/15
+ - 181s - loss: 0.2235 - mean_absolute_error: 0.1360
+Bag 1, epoch 14
+RMSE: 0.22309005441115817
+Avg RMSE: 0.21985025603738553
+Epoch 16/16
+ - 181s - loss: 0.2242 - mean_absolute_error: 0.1358
+Bag 1, epoch 15
+RMSE: 0.22187167190364623
+Avg RMSE: 0.21982477778883394
+Epoch 17/17
+ - 181s - loss: 0.2241 - mean_absolute_error: 0.1351
+Bag 1, epoch 16
+RMSE: 0.22221012309511998
+Avg RMSE: 0.21980074751030376
+Epoch 18/18
+ - 181s - loss: 0.2235 - mean_absolute_error: 0.1346
+Bag 1, epoch 17
+RMSE: 0.22247952805016089
+Avg RMSE: 0.21979169592889003
+Epoch 1/1
+ - 184s - loss: 1.5675 - mean_absolute_error: 0.1540
+Bag 2, epoch 0
+Epoch 2/2
+ - 181s - loss: 0.2311 - mean_absolute_error: 0.1482
+Bag 2, epoch 1
+Epoch 3/3
+ - 181s - loss: 0.2286 - mean_absolute_error: 0.1452
+Bag 2, epoch 2
+Epoch 4/4
+ - 181s - loss: 0.2275 - mean_absolute_error: 0.1431
+Bag 2, epoch 3
+Epoch 5/5
+ - 181s - loss: 0.2263 - mean_absolute_error: 0.1419
+Bag 2, epoch 4
+Epoch 6/6
+ - 181s - loss: 0.2251 - mean_absolute_error: 0.1407
+Bag 2, epoch 5
+Epoch 7/7
+ - 181s - loss: 0.2265 - mean_absolute_error: 0.1402
+Bag 2, epoch 6
+Epoch 8/8
+ - 181s - loss: 0.2240 - mean_absolute_error: 0.1392
+Bag 2, epoch 7
+Epoch 9/9
+ - 181s - loss: 0.2242 - mean_absolute_error: 0.1387
+Bag 2, epoch 8
+RMSE: 0.22167173128938336
+Avg RMSE: 0.2197722475319203
+Epoch 10/10
+ - 181s - loss: 0.2233 - mean_absolute_error: 0.1383
+Bag 2, epoch 9
+RMSE: 0.22162135215655213
+Avg RMSE: 0.21974570694858164
+Epoch 11/11
+ - 181s - loss: 0.2234 - mean_absolute_error: 0.1379
+Bag 2, epoch 10
+RMSE: 0.22169920486297542
+Avg RMSE: 0.21972385232898234
+Epoch 12/12
+ - 181s - loss: 0.2233 - mean_absolute_error: 0.1374
+Bag 2, epoch 11
+RMSE: 0.22199169471912147
+Avg RMSE: 0.21970120972727483
+Epoch 13/13
+ - 181s - loss: 0.2230 - mean_absolute_error: 0.1370
+Bag 2, epoch 12
+RMSE: 0.22203865181279303
+Avg RMSE: 0.21969014769917378
+Epoch 14/14
+ - 181s - loss: 0.2238 - mean_absolute_error: 0.1367
+Bag 2, epoch 13
+RMSE: 0.22343750111883565
+Avg RMSE: 0.2197041680252717
+Epoch 15/15
+ - 181s - loss: 0.2232 - mean_absolute_error: 0.1363
+Bag 2, epoch 14
+RMSE: 0.22170163114081662
+Avg RMSE: 0.21969072740320741
+Epoch 16/16
+ - 181s - loss: 0.2232 - mean_absolute_error: 0.1359
+Bag 2, epoch 15
+RMSE: 0.222403477774279
+Avg RMSE: 0.21968212980748195
+Epoch 17/17
+ - 181s - loss: 0.2248 - mean_absolute_error: 0.1358
+Bag 2, epoch 16
+RMSE: 0.22247724160676072
+Avg RMSE: 0.21967638077036164
+Epoch 18/18
+ - 181s - loss: 0.2238 - mean_absolute_error: 0.1356
+Bag 2, epoch 17
+RMSE: 0.22240010726427084
+Avg RMSE: 0.21967239249469436
+RMSE: 0.21970477834963706
+DOING FOLD 4
+Epoch 1/1
+ - 196s - loss: 1.4880 - mean_absolute_error: 0.1545
+Bag 0, epoch 0
+Epoch 2/2
+ - 193s - loss: 0.2317 - mean_absolute_error: 0.1486
+Bag 0, epoch 1
+Epoch 3/3
+ - 193s - loss: 0.2288 - mean_absolute_error: 0.1454
+Bag 0, epoch 2
+Epoch 4/4
+ - 193s - loss: 0.2279 - mean_absolute_error: 0.1435
+Bag 0, epoch 3
+Epoch 5/5
+ - 193s - loss: 0.2276 - mean_absolute_error: 0.1423
+Bag 0, epoch 4
+Epoch 6/6
+ - 193s - loss: 0.2258 - mean_absolute_error: 0.1412
+Bag 0, epoch 5
+Epoch 7/7
+ - 193s - loss: 0.2256 - mean_absolute_error: 0.1405
+Bag 0, epoch 6
+Epoch 8/8
+ - 193s - loss: 0.2246 - mean_absolute_error: 0.1399
+Bag 0, epoch 7
+Epoch 9/9
+ - 193s - loss: 0.2247 - mean_absolute_error: 0.1395
+Bag 0, epoch 8
+RMSE: 0.21734764433973555
+Avg RMSE: 0.21734764433973555
+Epoch 10/10
+ - 193s - loss: 0.2242 - mean_absolute_error: 0.1391
+Bag 0, epoch 9
+RMSE: 0.21865021819300484
+Avg RMSE: 0.2171566208899699
+Epoch 11/11
+ - 192s - loss: 0.2242 - mean_absolute_error: 0.1387
+Bag 0, epoch 10
+RMSE: 0.21762866613108373
+Avg RMSE: 0.21651349805517867
+Epoch 12/12
+ - 193s - loss: 0.2251 - mean_absolute_error: 0.1384
+Bag 0, epoch 11
+RMSE: 0.2173626575739604
+Avg RMSE: 0.21630992514804365
+Epoch 13/13
+ - 193s - loss: 0.2239 - mean_absolute_error: 0.1381
+Bag 0, epoch 12
+RMSE: 0.21740889008015835
+Avg RMSE: 0.21618034099327202
+Epoch 14/14
+ - 193s - loss: 0.2246 - mean_absolute_error: 0.1379
+Bag 0, epoch 13
+RMSE: 0.21749062220399643
+Avg RMSE: 0.2161057388620826
+Epoch 15/15
+ - 193s - loss: 0.2245 - mean_absolute_error: 0.1376
+Bag 0, epoch 14
+RMSE: 0.21822109284799518
+Avg RMSE: 0.21613310918382891
+Epoch 16/16
+ - 193s - loss: 0.2244 - mean_absolute_error: 0.1372
+Bag 0, epoch 15
+RMSE: 0.21803587497689006
+Avg RMSE: 0.21611624520119155
+Epoch 17/17
+ - 193s - loss: 0.2236 - mean_absolute_error: 0.1369
+Bag 0, epoch 16
+RMSE: 0.21745537964383455
+Avg RMSE: 0.2160347741026748
+Epoch 18/18
+ - 192s - loss: 0.2237 - mean_absolute_error: 0.1365
+Bag 0, epoch 17
+RMSE: 0.21793133792665362
+Avg RMSE: 0.21601906324196077
+Epoch 1/1
+ - 196s - loss: 1.4867 - mean_absolute_error: 0.1540
+Bag 1, epoch 0
+Epoch 2/2
+ - 193s - loss: 0.2316 - mean_absolute_error: 0.1483
+Bag 1, epoch 1
+Epoch 3/3
+ - 193s - loss: 0.2291 - mean_absolute_error: 0.1454
+Bag 1, epoch 2
+Epoch 4/4
+ - 193s - loss: 0.2278 - mean_absolute_error: 0.1435
+Bag 1, epoch 3
+Epoch 5/5
+ - 193s - loss: 0.2271 - mean_absolute_error: 0.1422
+Bag 1, epoch 4
+Epoch 6/6
+ - 193s - loss: 0.2268 - mean_absolute_error: 0.1414
+Bag 1, epoch 5
+Epoch 7/7
+ - 193s - loss: 0.2260 - mean_absolute_error: 0.1407
+Bag 1, epoch 6
+Epoch 8/8
+ - 193s - loss: 0.2250 - mean_absolute_error: 0.1400
+Bag 1, epoch 7
+Epoch 9/9
+ - 193s - loss: 0.2248 - mean_absolute_error: 0.1395
+Bag 1, epoch 8
+RMSE: 0.21740147783219965
+Avg RMSE: 0.2158337242471772
+Epoch 10/10
+ - 193s - loss: 0.2247 - mean_absolute_error: 0.1390
+Bag 1, epoch 9
+RMSE: 0.21758128199876994
+Avg RMSE: 0.21575972555574918
+Epoch 11/11
+ - 193s - loss: 0.2244 - mean_absolute_error: 0.1386
+Bag 1, epoch 10
+RMSE: 0.21700610315046356
+Avg RMSE: 0.21570588954939685
+Epoch 12/12
+ - 193s - loss: 0.2239 - mean_absolute_error: 0.1382
+Bag 1, epoch 11
+RMSE: 0.2169559369282048
+Avg RMSE: 0.21561210662147184
+Epoch 13/13
+ - 193s - loss: 0.2266 - mean_absolute_error: 0.1383
+Bag 1, epoch 12
+RMSE: 0.21740844143253785
+Avg RMSE: 0.2155563823304626
+Epoch 14/14
+ - 193s - loss: 0.2258 - mean_absolute_error: 0.1379
+Bag 1, epoch 13
+RMSE: 0.21813131114888618
+Avg RMSE: 0.21555246053689134
+Epoch 15/15
+ - 193s - loss: 0.2255 - mean_absolute_error: 0.1375
+Bag 1, epoch 14
+RMSE: 0.217359906154569
+Avg RMSE: 0.21551742361179793
+Epoch 16/16
+ - 193s - loss: 0.2252 - mean_absolute_error: 0.1373
+Bag 1, epoch 15
+RMSE: 0.2175595280380073
+Avg RMSE: 0.21551042523172867
+Epoch 17/17
+ - 193s - loss: 0.2245 - mean_absolute_error: 0.1369
+Bag 1, epoch 16
+RMSE: 0.21746163884205685
+Avg RMSE: 0.21548581218563148
+Epoch 18/18
+ - 193s - loss: 0.2236 - mean_absolute_error: 0.1365
+Bag 1, epoch 17
+RMSE: 0.21744548235662248
+Avg RMSE: 0.21547572602761944
+Epoch 1/1
+ - 196s - loss: 1.4846 - mean_absolute_error: 0.1539
+Bag 2, epoch 0
+Epoch 2/2
+ - 193s - loss: 0.2305 - mean_absolute_error: 0.1476
+Bag 2, epoch 1
+Epoch 3/3
+ - 193s - loss: 0.2283 - mean_absolute_error: 0.1445
+Bag 2, epoch 2
+Epoch 4/4
+ - 193s - loss: 0.2268 - mean_absolute_error: 0.1426
+Bag 2, epoch 3
+Epoch 5/5
+ - 193s - loss: 0.2260 - mean_absolute_error: 0.1415
+Bag 2, epoch 4
+Epoch 6/6
+ - 193s - loss: 0.2252 - mean_absolute_error: 0.1409
+Bag 2, epoch 5
+Epoch 7/7
+ - 193s - loss: 0.2248 - mean_absolute_error: 0.1403
+Bag 2, epoch 6
+Epoch 8/8
+ - 193s - loss: 0.2245 - mean_absolute_error: 0.1399
+Bag 2, epoch 7
+Epoch 9/9
+ - 193s - loss: 0.2243 - mean_absolute_error: 0.1395
+Bag 2, epoch 8
+RMSE: 0.2179333434320485
+Avg RMSE: 0.21548117216025736
+Epoch 10/10
+ - 193s - loss: 0.2244 - mean_absolute_error: 0.1391
+Bag 2, epoch 9
+RMSE: 0.21751882144994403
+Avg RMSE: 0.215464802920933
+Epoch 11/11
+ - 193s - loss: 0.2243 - mean_absolute_error: 0.1387
+Bag 2, epoch 10
+RMSE: 0.21810928054942763
+Avg RMSE: 0.2154410845825974
+Epoch 12/12
+ - 193s - loss: 0.2239 - mean_absolute_error: 0.1385
+Bag 2, epoch 11
+RMSE: 0.21801661459219068
+Avg RMSE: 0.21540162003513624
+Epoch 13/13
+ - 193s - loss: 0.2238 - mean_absolute_error: 0.1382
+Bag 2, epoch 12
+RMSE: 0.21741584313901263
+Avg RMSE: 0.21538427153678621
+Epoch 14/14
+ - 193s - loss: 0.2237 - mean_absolute_error: 0.1377
+Bag 2, epoch 13
+RMSE: 0.2180454660698624
+Avg RMSE: 0.21538230365403127
+Epoch 15/15
+ - 193s - loss: 0.2239 - mean_absolute_error: 0.1375
+Bag 2, epoch 14
+RMSE: 0.21790714073370077
+Avg RMSE: 0.215361982353113
+Epoch 16/16
+ - 193s - loss: 0.2239 - mean_absolute_error: 0.1373
+Bag 2, epoch 15
+RMSE: 0.21775385333184796
+Avg RMSE: 0.21533733747918202
+Epoch 17/17
+ - 193s - loss: 0.2242 - mean_absolute_error: 0.1369
+Bag 2, epoch 16
+RMSE: 0.2177520430331939
+Avg RMSE: 0.21532870160025366
+Epoch 18/18
+ - 193s - loss: 0.2240 - mean_absolute_error: 0.1365
+Bag 2, epoch 17
+RMSE: 0.21767579051047717
+Avg RMSE: 0.21531579500234524
+RMSE: 0.21534348862421457
+DOING FOLD 5
+Epoch 1/1
+ - 231s - loss: 1.2953 - mean_absolute_error: 0.1532
+Bag 0, epoch 0
+Epoch 2/2
+ - 227s - loss: 0.2303 - mean_absolute_error: 0.1475
+Bag 0, epoch 1
+Epoch 3/3
+ - 227s - loss: 0.2284 - mean_absolute_error: 0.1448
+Bag 0, epoch 2
+Epoch 4/4
+ - 227s - loss: 0.2271 - mean_absolute_error: 0.1431
+Bag 0, epoch 3
+Epoch 5/5
+ - 227s - loss: 0.2259 - mean_absolute_error: 0.1420
+Bag 0, epoch 4
+Epoch 6/6
+ - 227s - loss: 0.2259 - mean_absolute_error: 0.1414
+Bag 0, epoch 5
+Epoch 7/7
+ - 227s - loss: 0.2250 - mean_absolute_error: 0.1409
+Bag 0, epoch 6
+Epoch 8/8
+ - 227s - loss: 0.2247 - mean_absolute_error: 0.1406
+Bag 0, epoch 7
+Epoch 9/9
+ - 227s - loss: 0.2246 - mean_absolute_error: 0.1402
+Bag 0, epoch 8
+RMSE: 1.1526713656515568
+Avg RMSE: 1.1526713656515568
+Epoch 10/10
+ - 227s - loss: 0.2244 - mean_absolute_error: 0.1401
+Bag 0, epoch 9
+RMSE: 1.15706886793082
+Avg RMSE: 1.1547143686181345
+Epoch 11/11
+ - 227s - loss: 0.2243 - mean_absolute_error: 0.1399
+Bag 0, epoch 10
+RMSE: 1.153987115229236
+Avg RMSE: 1.1543677061690345
+Epoch 12/12
+ - 227s - loss: 0.2242 - mean_absolute_error: 0.1395
+Bag 0, epoch 11
+RMSE: 1.152107473805559
+Avg RMSE: 1.1537235350657937
+Epoch 13/13
+ - 227s - loss: 0.2243 - mean_absolute_error: 0.1394
+Bag 0, epoch 12
+RMSE: 1.1392679177531821
+Avg RMSE: 1.1507730133651601
+Epoch 14/14
+ - 227s - loss: 0.2244 - mean_absolute_error: 0.1392
+Bag 0, epoch 13
+RMSE: 1.1651838289162433
+Avg RMSE: 1.153115231151195
+Epoch 15/15
+ - 228s - loss: 0.2242 - mean_absolute_error: 0.1388
+Bag 0, epoch 14
+RMSE: 1.1430803555700504
+Avg RMSE: 1.151628565429219
+Epoch 16/16
+ - 228s - loss: 0.2238 - mean_absolute_error: 0.1385
+Bag 0, epoch 15
+RMSE: 1.1512769202724427
+Avg RMSE: 1.1515363662568454
+Epoch 17/17
+ - 228s - loss: 0.2238 - mean_absolute_error: 0.1384
+Bag 0, epoch 16
+RMSE: 1.153260674886779
+Avg RMSE: 1.151687624808594
+Epoch 18/18
+ - 228s - loss: 0.2242 - mean_absolute_error: 0.1383
+Bag 0, epoch 17
+RMSE: 1.1411670528547289
+Avg RMSE: 1.1505941390323613
+Epoch 1/1
+ - 232s - loss: 1.2992 - mean_absolute_error: 0.1537
+Bag 1, epoch 0
+Epoch 2/2
+ - 228s - loss: 0.2301 - mean_absolute_error: 0.1475
+Bag 1, epoch 1
+Epoch 3/3
+ - 228s - loss: 0.2279 - mean_absolute_error: 0.1447
+Bag 1, epoch 2
+Epoch 4/4
+ - 228s - loss: 0.2271 - mean_absolute_error: 0.1433
+Bag 1, epoch 3
+Epoch 5/5
+ - 228s - loss: 0.2260 - mean_absolute_error: 0.1423
+Bag 1, epoch 4
+Epoch 6/6
+ - 228s - loss: 0.2251 - mean_absolute_error: 0.1414
+Bag 1, epoch 5
+Epoch 7/7
+ - 228s - loss: 0.2248 - mean_absolute_error: 0.1410
+Bag 1, epoch 6
+Epoch 8/8
+ - 228s - loss: 0.2243 - mean_absolute_error: 0.1405
+Bag 1, epoch 7
+Epoch 9/9
+ - 228s - loss: 0.2242 - mean_absolute_error: 0.1402
+Bag 1, epoch 8
+RMSE: 1.1647638877651854
+Avg RMSE: 1.1518359631940962
+Epoch 10/10
+ - 228s - loss: 0.2240 - mean_absolute_error: 0.1399
+Bag 1, epoch 9
+RMSE: 1.1594893593576754
+Avg RMSE: 1.1524315768923024
+Epoch 11/11
+ - 228s - loss: 0.2236 - mean_absolute_error: 0.1396
+Bag 1, epoch 10
+RMSE: 1.1520383262187435
+Avg RMSE: 1.1523701730927147
+Epoch 12/12
+ - 228s - loss: 0.2239 - mean_absolute_error: 0.1393
+Bag 1, epoch 11
+RMSE: 1.1594196070922982
+Avg RMSE: 1.1528438948619568
+Epoch 13/13
+ - 228s - loss: 0.2239 - mean_absolute_error: 0.1391
+Bag 1, epoch 12
+RMSE: 1.1627586147249496
+Avg RMSE: 1.1534715756478224
+Epoch 14/14
+ - 228s - loss: 0.4396 - mean_absolute_error: 0.1443
+Bag 1, epoch 13
+RMSE: 1.1758760224531521
+Avg RMSE: 1.154795359323689
+Epoch 15/15
+ - 228s - loss: 0.9865 - mean_absolute_error: 0.1456
+Bag 1, epoch 14
+RMSE: 1.1629768326305332
+Avg RMSE: 1.1552212744586734
+Epoch 16/16
+ - 228s - loss: 1.0021 - mean_absolute_error: 0.1446
+Bag 1, epoch 15
+RMSE: 1.1446650565326926
+Avg RMSE: 1.154580989678872
+Epoch 17/17
+ - 228s - loss: 1.1955 - mean_absolute_error: 0.1447
+Bag 1, epoch 16
+RMSE: 1.1543729901299844
+Avg RMSE: 1.1545321493477643
+Epoch 18/18
+ - 228s - loss: 1.1202 - mean_absolute_error: 0.1441
+Bag 1, epoch 17
+RMSE: 1.1573699035578462
+Avg RMSE: 1.1546342750570506
+Epoch 1/1
+ - 232s - loss: 1.2968 - mean_absolute_error: 0.1535
+Bag 2, epoch 0
+Epoch 2/2
+ - 228s - loss: 0.2301 - mean_absolute_error: 0.1477
+Bag 2, epoch 1
+Epoch 3/3
+ - 228s - loss: 0.2282 - mean_absolute_error: 0.1448
+Bag 2, epoch 2
+Epoch 4/4
+ - 228s - loss: 0.2270 - mean_absolute_error: 0.1433
+Bag 2, epoch 3
+Epoch 5/5
+ - 228s - loss: 0.2264 - mean_absolute_error: 0.1423
+Bag 2, epoch 4
+Epoch 6/6
+ - 228s - loss: 0.2256 - mean_absolute_error: 0.1416
+Bag 2, epoch 5
+Epoch 7/7
+ - 228s - loss: 0.2258 - mean_absolute_error: 0.1411
+Bag 2, epoch 6
+Epoch 8/8
+ - 228s - loss: 0.2251 - mean_absolute_error: 0.1408
+Bag 2, epoch 7
+Epoch 9/9
+ - 228s - loss: 0.2249 - mean_absolute_error: 0.1404
+Bag 2, epoch 8
+RMSE: 1.1567808091206957
+Avg RMSE: 1.1547173302185583
+Epoch 10/10
+ - 228s - loss: 0.2253 - mean_absolute_error: 0.1400
+Bag 2, epoch 9
+RMSE: 1.1397371751164216
+Avg RMSE: 1.1540174537676526
+Epoch 11/11
+ - 228s - loss: 0.2241 - mean_absolute_error: 0.1395
+Bag 2, epoch 10
+RMSE: 1.148406394994305
+Avg RMSE: 1.1537549540916867
+Epoch 12/12
+ - 228s - loss: 0.2241 - mean_absolute_error: 0.1393
+Bag 2, epoch 11
+RMSE: 1.1461010219591425
+Avg RMSE: 1.1534183578552368
+Epoch 13/13
+ - 228s - loss: 0.2244 - mean_absolute_error: 0.1389
+Bag 2, epoch 12
+RMSE: 1.156914164285485
+Avg RMSE: 1.1535423481009754
+Epoch 14/14
+ - 228s - loss: 0.2239 - mean_absolute_error: 0.1388
+Bag 2, epoch 13
+RMSE: 1.1535816147623623
+Avg RMSE: 1.153527821919652
+Epoch 15/15
+ - 228s - loss: 0.2242 - mean_absolute_error: 0.1385
+Bag 2, epoch 14
+RMSE: 1.1565125351411252
+Avg RMSE: 1.15362040407974
+Epoch 16/16
+ - 228s - loss: 0.2236 - mean_absolute_error: 0.1383
+Bag 2, epoch 15
+RMSE: 1.1531635451510238
+Avg RMSE: 1.15358606979883
+Epoch 17/17
+ - 228s - loss: 0.2242 - mean_absolute_error: 0.1380
+Bag 2, epoch 16
+RMSE: 1.1620779900999436
+Avg RMSE: 1.153862691782392
+Epoch 18/18
+ - 228s - loss: 0.2240 - mean_absolute_error: 0.1380
+rnnFT5CV_0106A.py:510: SettingWithCopyWarning:
+
+
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+
+Bag 2, epoch 17
+RMSE: 1.1397313355597452
+Avg RMSE: 1.1533764206318944
+RMSE: 1.1508526735511284
