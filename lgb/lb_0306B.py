@@ -26,6 +26,7 @@ path = "/home/darragh/avito/data/"
 #path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = False
+first_text_run = False
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
@@ -71,10 +72,11 @@ for col in featimgmeta.columns.values[1:]:
     df[col].astype(np.float32, inplace = True)
     
 print('[{}] Load translated image engineered features'.format(time.time() - start_time))
-dftrl = pd.concat([pd.read_csv(path + '../features/translate_trn_en.csv.gz', compression = 'gzip').set_index('item_id'),
-                        pd.read_csv(path + '../features/translate_tst_en.csv.gz', compression = 'gzip').set_index('item_id')])
-dftrl.columns = [c.replace('_translated', '') for c in dftrl.columns]
-dftrl.drop(['parent_category_name', 'category_name'], axis = 1, inplace = True)
+if first_text_run:
+    dftrl = pd.concat([pd.read_csv(path + '../features/translate_trn_en.csv.gz', compression = 'gzip').set_index('item_id'),
+                            pd.read_csv(path + '../features/translate_tst_en.csv.gz', compression = 'gzip').set_index('item_id')])
+    dftrl.columns = [c.replace('_translated', '') for c in dftrl.columns]
+    dftrl.drop(['parent_category_name', 'category_name'], axis = 1, inplace = True)
 gc.collect()
  
 print('[{}] Load other engineered features'.format(time.time() - start_time))
@@ -160,9 +162,10 @@ def text_features(df_):
       df_['parent_category_name'].fillna('').astype(str) + ' ' + df_['category_name'].fillna('').astype(str) )
     return df_
 df    = text_features(df)
-dftrl['parent_category_name'] = df['parent_category_name']
-dftrl['category_name'] = df['category_name']
-dftrl = text_features(dftrl)
+if first_text_run:
+    dftrl['parent_category_name'] = df['parent_category_name']
+    dftrl['category_name'] = df['category_name']
+    dftrl = text_features(dftrl)
 gc.collect()
 
 print('[{}] Create Time Variables'.format(time.time() - start_time))
@@ -193,7 +196,8 @@ def strlower(df_):
         df_[cols] = df_[cols].str.lower() # Lowercase all text, so that capitalized words dont get treated differently
     return df_
 df    = strlower(df)
-dftrl = strlower(dftrl)
+if first_text_run:
+    dftrl = strlower(dftrl)
     
 textfeats = ["description","text_feat", "title", 'text']
 for cols in textfeats:    
@@ -236,7 +240,7 @@ def parallelize(data, func):
 
 def morph_it(df_, fname, text_cols, load_text):
     if load_text:
-        dftxt = pd.read_csv(path + fname, compression = 'gzip')
+        dftxt = pd.read_csv(path + fname, compression = 'gzip', usecols = text_cols)
         for col in text_cols:
             print(col + ' load tokenised [{}]'.format(time.time() - start_time))
             df_[col] = dftxt[col].values
@@ -251,11 +255,16 @@ def morph_it(df_, fname, text_cols, load_text):
     return df_
 
 load_text  = True
-text_cols  = ['description', 'text', 'text_feat', 'title']
+text_cols  = ['text', 'text_feat', 'title']
 fnamedf    = '../features/text_features_morphed.csv.gz'
 fnamedftrl = '../features/text_features_morphed_augment.csv.gz'
 df    = morph_it(df    , fnamedf   , text_cols, load_text)
-dftrl = morph_it(dftrl , fnamedftrl, text_cols, load_text)
+text_cols  = ['text', 'title']
+fnamedftrl = '../features/text_features_morphed_augment.csv.gz'
+if first_text_run:
+    dftrl = morph_it(dftrl , fnamedftrl, text_cols, load_text)
+else:
+    dftrl = pd.read_csv(path + fnamedftrl, compression = 'gzip', usecols = text_cols)
 gc.collect()
 print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
 
@@ -301,11 +310,13 @@ vectorizer2 = FeatureUnion([
             preprocessor=get_col('title'))),
     ])
 
-
+dftrl.index = df.index
+dftrl.fillna('', inplace = True)
+dftrl.head()
 start_vect=time.time()
 text_cols = ['text', 'text_feat', 'title']
-# vectorizer.fit(df.loc[traindex,:].to_dict('records'))
 vectorizer1.fit(df[text_cols].loc[traindex,:].to_dict('records'))
+text_cols = ['text', 'title']
 vectorizer2.fit(dftrl[text_cols].loc[traindex,:].to_dict('records'))
 ready_df    = vectorizer1.transform(df.to_dict('records'))
 ready_dftrl = vectorizer2.transform(dftrl.to_dict('records'))
@@ -339,7 +350,7 @@ testing = hstack([csr_matrix(df.loc[testdex,:].values), \
                   ready_df[traindex.shape[0]:], \
                   ready_dftrl[traindex.shape[0]:]])
 tfvocab = df.columns.tolist() + tfvocab1 + tfvocab2
-for shape in [X_train, X_traintrl, X_valid,testing]:
+for shape in [X_train, X_valid,testing]:
     print("{} Rows and {} Cols".format(*shape.shape))
 print("Feature Names Length: ",len(tfvocab))
 del df
