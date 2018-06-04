@@ -39,11 +39,12 @@ mlp_1605B     ????               ??????             0.2208          Weighted avg
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
+L1GBM_0406A   ??????             ?????              0.2166          fixed lgb bug at L1, hash 'text' instead of description
 L1GBM_0306A   ??????             ?????              0.2167          Included title translation LGB 
 ```
 
 ### Word embeddings
-==============================
+=================================================================================================
 ```
 features/wiki.ru.vec                  - https://github.com/facebookresearch/fastText/blob/master/pretrained-vectors.md
 cc.ru.300.vec.gz                      - https://github.com/facebookresearch/fastText/blob/master/docs/crawl-vectors.md
