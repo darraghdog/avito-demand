@@ -426,8 +426,8 @@ def train_model(dtrain, dvalid):
 
     for i in range(epochs):
         print(i,' ',np.argsort(res)[i,0], ':', res[i,np.argsort(res)[i,0]])
-    i=5
-    j=25
+    i=0
+    j=12
     y_sub = to_proba(sum([sum(to_logit(y_pred_ls[i+epochs*bag:j+epochs*bag]))/len(y_pred_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags)
 
     return y_sub
