@@ -418,7 +418,7 @@ def train_model(dtrain, dvalid):
     for i in range(epochs):
         for j in range(i+1,epochs+1):
             preds = sum([sum(to_logit(y_pred_ls[i+epochs*bag:j+epochs*bag]))/len(y_pred_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags
-            res[i,j] = np.sqrt(metrics.roc_auc_score(dvalid['deal_probability'], to_proba(preds.flatten())))
+            res[i,j] = np.sqrt(metrics.mean_squared_error(dvalid['deal_probability'], to_proba(preds.flatten())))
 #         print(i,' to ',j, 'RMSE bags:', res[i,j])
 
     with open('../../res_{}.pkl'.format(f),'wb') as fo:
