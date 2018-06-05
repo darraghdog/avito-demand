@@ -378,13 +378,13 @@ def train_model(dtrain, dvalid):
     def to_proba(ls):
         return 1/(1+np.exp(-ls))
 
-    epochs = 25
+    epochs = 13
     batchSize = 512
     steps = (dtrain.shape[0]/batchSize+1)*epochs
     lr_init, lr_fin = 0.0014, 0.00001
     lr_decay  = (lr_init - lr_fin)/steps
 
-    bags      = 3
+    bags      = 5
     y_pred_ls = []
     train_sorted_ix = np.array(map_sort(dtrain["title"].tolist(), dtrain["description"].tolist()))
     val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
