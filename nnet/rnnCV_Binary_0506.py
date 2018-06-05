@@ -253,7 +253,7 @@ class Seq_generator(Sequence):
         self.batch_size = bsize
         self.dt = dt.iloc[sort_vals].reset_index(drop=True)
         if target_out:
-            self.y = self.dt.deal_probability.values
+            self.y = np.ceil(self.dt.deal_probability.values)
         else:
             self.y = None
 
