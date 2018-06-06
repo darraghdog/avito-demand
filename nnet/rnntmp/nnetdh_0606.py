@@ -122,9 +122,21 @@ df.head()
 
 df.sort_values('idx', inplace = True)
 
+print('[{}] Load meta image engineered features'.format(time.time() - start_time))
+featimgmeta = pd.concat([pd.read_csv(path + '../features/img_features_%s.csv.gz'%(i)) for i in range(6)])
+featimgmeta.rename(columns = {'name':'image'}, inplace = True)
+featimgmeta['image'] = featimgmeta['image'].str.replace('.jpg', '')
+featimgmeta['whiteness'] = np.log1p(featimgmeta['whiteness'])
+featimgmeta['dullness'] = pd.Series(np.log1p(abs(100-featimgmeta['dullness'])))
+scl = StandardScaler()
+for col in [c for c in featimgmeta.columns if c!= 'image']:
+    featimgmeta[col] = scl.fit_transform(featimgmeta[col].values.reshape(-1, 1)).flatten()
+    featimgmeta.rename(columns = {col: col+'_cont'}, inplace = True)
+df = df.reset_index('item_id').merge(featimgmeta, on = ['image'], how = 'left').set_index('item_id')
+df.sort_values('idx', inplace = True)
+
 
 print('[{}] Load engineered price ratio features'.format(time.time() - start_time))
-
 featrdgprc = pd.read_csv(path + '../features/price_category_ratios.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 for col in featrdgprc.columns:
     featrdgprc[col].fillna(featrdgprc[col].median(), inplace = True)
@@ -376,6 +388,7 @@ dtest  = df.loc[testdex,:].reset_index()
 dtrain['target'] = y[trnidx].values
 dvalid['target'] = y[validx].values
 
+dtrain.columns
 
 train_sorted_ix = np.array(map_sort(dtrain["title"].tolist(), dtrain["description"].tolist()))
 val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
@@ -455,10 +468,9 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     main_l = Dense(256, kernel_regularizer=l2(l2_val)) (main_l)
     main_l = PReLU()(main_l)
     main_l = Dropout(dr)(main_l)
-    #main_l = Dense(256, kernel_regularizer=l2(l2_val)) (main_l)
-    #main_l = PReLU()(main_l)
-    #main_l = BatchNormalization()(main_l)
-    #main_l = Dropout(dr)(main_l)
+    main_l = Dense(256, kernel_regularizer=l2(l2_val)) (main_l)
+    main_l = PReLU()(main_l)
+    main_l = Dropout(dr)(main_l)
     main_l = Dense(32, kernel_regularizer=l2(l2_val)) (main_l)
     main_l = PReLU()(main_l)
     #main_l = BatchNormalization()(main_l)

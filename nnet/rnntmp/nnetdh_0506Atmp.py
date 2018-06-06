@@ -89,42 +89,9 @@ del traindf,testdf
 gc.collect()
 print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
 
-'''
-print('[{}] Load engineered user features'.format(time.time() - start_time))
-featusrttl = pd.read_csv(path + '../features/user_agg.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
-featusrcat = pd.read_csv(path + '../features/usercat_agg.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
-featusrprd = pd.read_csv(path + '../features/user_activ_period_stats.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
-featusrttl.rename(columns={'title': 'all_titles'}, inplace = True)
-keep = ['user_id', 'all_titles', 'user_avg_price', 'user_ad_ct']
-df = df.reset_index().merge(featusrttl[keep], on = 'user_id').set_index('item_id')
-keep = ['user_id', 'parent_category_name', 'usercat_avg_price', 'usercat_ad_ct']
-gc.collect()
-df = df.reset_index().merge(featusrcat[keep], on = ['user_id', 'parent_category_name']).set_index('item_id')
-keep = ['user_id', 'user_activ_sum', 'user_activ_mean', 'user_activ_var']
-gc.collect()
-df = df.reset_index().merge(featusrprd[keep], on = ['user_id'], how = 'left').set_index('item_id')
-usr_cols = ['user_avg_price', 'user_ad_ct', 'usercat_avg_price', 'usercat_ad_ct']  
-usr_cols += ['user_activ_sum', 'user_activ_mean', 'user_activ_var']
-for col in usr_cols:
-    #df["bin_no_" + col] = (df[col].isna()).astype(np.int32)
-    df[col].fillna(0, inplace = True)
-    df[col] = np.log1p(df[col]+0.111).values
-    df.rename(columns = { col : col+'_cont'}, inplace = True)
-'''
-
-print('[{}] Load bayes mean features'.format(time.time() - start_time))
-featenc = pd.read_csv(path + '../features/alldf_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
-for col in featenc.columns:
-    featenc.rename(columns = { col : 'cont_'+col}, inplace = True)
-df = pd.concat([df.reset_index(),featenc],axis=1)
-df = df.set_index('item_id')
-df.head()
-
-df.sort_values('idx', inplace = True)
 
 
-print('[{}] Load engineered price ratio features'.format(time.time() - start_time))
-
+print('[{}] Load engineered features'.format(time.time() - start_time))
 featrdgprc = pd.read_csv(path + '../features/price_category_ratios.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 for col in featrdgprc.columns:
     featrdgprc[col].fillna(featrdgprc[col].median(), inplace = True)
@@ -137,6 +104,23 @@ df = pd.concat([df, featrdgprc], axis = 1)
 del featrdgprc
 gc.collect()
 
+print('[{}] Load engineered user features'.format(time.time() - start_time))
+featusrttl = pd.read_csv(path + '../features/user_agg.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+featusrcat = pd.read_csv(path + '../features/usercat_agg.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+keep = ['user_id', 'user_avg_price', 'user_ad_ct']
+featusrttl = featusrttl[keep]
+#keep = ['user_id', 'parent_category_name', 'usercat_avg_price', 'usercat_ad_ct']
+#featusrcat = featusrcat[keep]
+df = df.reset_index().merge(featusrttl, on = 'user_id').set_index('item_id')
+#df = df.reset_index().merge(featusrcat, on = ['user_id', 'parent_category_name']).set_index('item_id')
+usr_cols = ['user_avg_price', 'user_ad_ct']  
+for col in usr_cols:
+    #df["bin_no_" + col] = (df[col].isna()).astype(np.int32)
+    df[col].fillna(0, inplace = True)
+    df[col] = np.log1p(df[col]+0.111).values
+    df.rename(columns = { col : col+'_cont'}, inplace = True)
+df.sort_values('idx', inplace = True)
+
 print('[{}] Manage Memory'.format(time.time() - start_time))
 for col in df.columns:
     if np.float64 == df[col].dtype:
@@ -146,18 +130,17 @@ for col in df.columns:
     gc.collect()
 df.dtypes
 
-'''
+
 print('[{}] Load translated features'.format(time.time() - start_time))
 usecols = [c + '_translated' for c in ['title', 'description', 'param_1', 'param_2', 'param_3']]+['item_id']
 dftrl = pd.concat([pd.read_csv(path + '../features/translate_trn_en.csv.gz', usecols = usecols, compression = 'gzip').set_index('item_id'),
             pd.read_csv(path + '../features/translate_tst_en.csv.gz', usecols = usecols, compression = 'gzip').set_index('item_id')])
 dftrl.columns = [c.replace('_translated', '') for c in dftrl.columns]
 gc.collect()
-'''
 
 print('[{}] Missing values'.format(time.time() - start_time))
 for col in ['param_1', 'param_2', 'param_3', 'description', 'price', 'image']:
-    df["bin_no_" + col] = (df[col].isna()).astype(np.int32)
+    df["bin_no_" + col] = (df[col] != df[col]).astype(np.int32)
 cols = [c for c in df.columns if 'bin_no_' in c]
 df[cols].head()
 
@@ -171,7 +154,6 @@ for col in ['price', 'item_seq_number']:
     df["cont_log_%s"%(col)] = np.log(df[col]+0.001)
     df["cont_log_%s"%(col)].fillna(-1,inplace=True)
 df["image_top_1"].fillna(-1,inplace=True)
-
 
 print('[{}] Create Time Variables'.format(time.time() - start_time))
 df["emb_weekday"] = df['activation_date'].dt.weekday
@@ -196,7 +178,7 @@ def expand_description(df_, category = True):
         df_.drop(['param_1', 'param_2', 'param_3', 'text_feat'], axis = 1, inplace = True)
     return df_
 df =  expand_description(df)
-# dftrl =  expand_description(dftrl, category = False)
+dftrl =  expand_description(dftrl, category = False)
 
 print('[{}] Categoricals with some low counts'.format(time.time() - start_time))
 def lowCtCat(col, cutoff = 20):
@@ -263,7 +245,7 @@ def parallelize(data, func):
 for col in ['description', 'title',]:
    print('Tokenise %s'%(col))
    df[col] = parallelize(df[col], tokCol)
-   # dftrl[col] = parallelize(dftrl[col], tokCol)
+   dftrl[col] = parallelize(dftrl[col], tokCol)
 print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
 
 @jit
@@ -297,17 +279,20 @@ def fit_sequence(str_, tkn_, filt = True):
 
 print('[{}] Finished FITTING TEXT DATA...'.format(time.time() - start_time))
 tok_raw = myTokenizerFit(df['description'].loc[traindex].values.tolist()+ \
-                         df['title'].loc[traindex].values.tolist(), max_words = 80000)
-                         #dftrl['title'].loc[traindex].values.tolist()+ \
-                         #dftrl['description'].loc[traindex].values.tolist(), max_words = 80000)
+                         df['title'].loc[traindex].values.tolist()+ \
+                         dftrl['title'].loc[traindex].values.tolist()+ \
+                         dftrl['description'].loc[traindex].values.tolist(), max_words = 80000)
 print('[{}] Finished PROCESSING TEXT DATA...'.format(time.time() - start_time))
+df.head()
+dftrl.head()
+
 df["title"]       = fit_sequence(df.title, tok_raw)
 df["description"] = fit_sequence(df.description, tok_raw)
-#df["title_translated"]       = fit_sequence(dftrl.title, tok_raw)
-#df["description_translated"] = fit_sequence(dftrl.description, tok_raw)
+df["title_translated"]       = fit_sequence(dftrl.title, tok_raw)
+df["description_translated"] = fit_sequence(dftrl.description, tok_raw)
 df["title"]       = [l if len(l)>0 else [0] for l in df["title"]]
 gc.collect()
-#del dftrl
+del dftrl
 gc.collect()
 
 
@@ -347,10 +332,10 @@ class Seq_generator(Sequence):
                                   maxlen=max([len(l) for l in dataset.title]))
             ,'description': pad_sequences(dataset.description,
                                   maxlen=max([len(l) for l in dataset.description]))
-            #,'title_translated': pad_sequences(dataset.title_translated,
-            #                      maxlen=max([len(l) for l in dataset.title_translated]))
-            #,'description_translated': pad_sequences(dataset.description_translated,
-            #                      maxlen=max([len(l) for l in dataset.description_translated]))
+            ,'title_translated': pad_sequences(dataset.title_translated,
+                                  maxlen=max([len(l) for l in dataset.title_translated]))
+            ,'description_translated': pad_sequences(dataset.description_translated,
+                                  maxlen=max([len(l) for l in dataset.description_translated]))
             }
         for col in embed_szs.keys():
             X[col] = dataset[col].values
@@ -384,6 +369,8 @@ tst_sorted_ix = np.array(map_sort(dtest ["title"].tolist(), dtest ["description"
 y_pred_epochs = []
 
 
+
+
 def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
 
     def root_mean_squared_error(y_true, y_pred):
@@ -405,8 +392,8 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     ##Inputs
     title = Input(shape=[None], name="title")
     description = Input(shape=[None], name="description")
-    #title_translated = Input(shape=[None], name="title_translated")
-    #description_translated = Input(shape=[None], name="description_translated")
+    title_translated = Input(shape=[None], name="title_translated")
+    description_translated = Input(shape=[None], name="description_translated")
     img_layer = Input(shape=[dnimgtrn.shape[1]], name="img_layer")
     
 
@@ -454,11 +441,8 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     #main_l = BatchNormalization()(main_l)
     main_l = Dense(256, kernel_regularizer=l2(l2_val)) (main_l)
     main_l = PReLU()(main_l)
-    main_l = Dropout(dr)(main_l)
-    #main_l = Dense(256, kernel_regularizer=l2(l2_val)) (main_l)
-    #main_l = PReLU()(main_l)
     #main_l = BatchNormalization()(main_l)
-    #main_l = Dropout(dr)(main_l)
+    main_l = Dropout(dr)(main_l)
     main_l = Dense(32, kernel_regularizer=l2(l2_val)) (main_l)
     main_l = PReLU()(main_l)
     #main_l = BatchNormalization()(main_l)
@@ -468,9 +452,8 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     output = Dense(1,activation="linear", kernel_regularizer=l2(l2_val)) (main_l)
 
     #model
-    model = Model([title, description] + \
+    model = Model([title, description, title_translated, description_translated] + \
                   [inp for inp in emb_inputs.values()] + [bin_vars] + [cont_vars] + [img_layer], output)
-                    # , title_translated, description_translated
     #optimizer = optimizers.Adam(clipnorm=10)
     optimizer = optimizers.Adam(clipvalue=0.5)
     model.compile(loss=root_mean_squared_error,
@@ -540,10 +523,10 @@ for i in range(epochs):
         preds = sum([sum(to_logit(y_pred_ls[i+epochs*bag:j+epochs*bag]))/len(y_pred_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags
         res[i,j] = np.sqrt(metrics.mean_squared_error(dvalid['target'], to_proba(preds.flatten())))
 
-        if res[i, j]<0.2134:
+        if res[i, j]<0.2137:
             print(i,' to ',j, 'RMSE bags:', res[i,j])
 # 4  to  28 RMSE bags: 0.21356346841391569
-# 4  to  28 RMSE bags: 0.21333529264681272
+# No price ratios 5  to  28 RMSE bags: 0.21369527260281618
 
 for i in range(epochs):
     print(i,' ',np.argsort(res)[i,0], ':', res[i,np.argsort(res)[i,0]])
@@ -553,356 +536,376 @@ j=28
 y_sub = sum([sum(to_logit(y_sub_ls[i+epochs*bag:j+epochs*bag]))/len(y_sub_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags
 rnnsub = pd.DataFrame(to_proba(y_sub),columns=["deal_probability"],index=testdex)
 rnnsub['deal_probability'] = rnnsub['deal_probability'] # Between 0 and 1
-rnnsub.to_csv(path+"../sub/rnndhsub_0506_val.csv.gz",index=True,header=True, compression = 'gzip')
+rnnsub.to_csv(path+"../sub/rnndhsub_0406A.csv.gz",index=True,header=True, compression = 'gzip')
 # print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 # print("Notebook Runtime: %0.2f Minutes"%((time.time() - notebookstart)/60))
 
 '''
-
 Epoch 1/1
-2489/2492 [============================>.] - ETA: 0s - loss: 0.2349 - mean_absolute_error: 0.1496     Epoch 1/1
-2492/2492 [==============================] - 71s 28ms/step - loss: 0.2348 - mean_absolute_error: 0.1496
-RMSE: 0.21985621116345772
+2492/2492 [==============================] - 83s 33ms/step - loss: 0.2375 - mean_absolute_error: 0.1507
+RMSE: 0.21971732788312276
 Epoch 2/2
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2272 - mean_absolute_error: 0.1456
-RMSE: 0.21793590569493146
-RMSE bags: 0.21792574992504865
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2289 - mean_absolute_error: 0.1451
+RMSE: 0.21823631135367927
+RMSE bags: 0.21789262291364989
 Epoch 3/3
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2255 - mean_absolute_error: 0.1439
-RMSE: 0.21712131928225736
-RMSE bags: 0.21699600061434435
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2266 - mean_absolute_error: 0.1432
+RMSE: 0.21746045993864224
+RMSE bags: 0.21705316162179344
 Epoch 4/4
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2246 - mean_absolute_error: 0.1428
-RMSE: 0.21610996979925132
-RMSE bags: 0.21627170564910336
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2254 - mean_absolute_error: 0.1419
+RMSE: 0.21711198596636136
+RMSE bags: 0.21644452168803377
 Epoch 5/5
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2238 - mean_absolute_error: 0.1419
-RMSE: 0.2159609722998397
-RMSE bags: 0.2156799962490314
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2244 - mean_absolute_error: 0.1406
+RMSE: 0.2166388121863551
+RMSE bags: 0.2159107927366218
 Epoch 6/6
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2233 - mean_absolute_error: 0.1411
-RMSE: 0.2155344516861518
-RMSE bags: 0.2153211645407326
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2234 - mean_absolute_error: 0.1397
+RMSE: 0.21683525406247284
+RMSE bags: 0.21557801365061383
 Epoch 7/7
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2230 - mean_absolute_error: 0.1405
-RMSE: 0.21551617273936377
-RMSE bags: 0.21503730970522453
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2228 - mean_absolute_error: 0.1389
+RMSE: 0.2171879806432999
+RMSE bags: 0.2153122001146096
 Epoch 8/8
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2226 - mean_absolute_error: 0.1397
-RMSE: 0.21548786100245093
-RMSE bags: 0.21482960198354567
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2221 - mean_absolute_error: 0.1382
+RMSE: 0.21610617115541575
+RMSE bags: 0.21500698381691224
 Epoch 9/9
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2225 - mean_absolute_error: 0.1392
-RMSE: 0.2154573516600981
-RMSE bags: 0.21466066180563864
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2218 - mean_absolute_error: 0.1376
+RMSE: 0.21548936830815804
+RMSE bags: 0.2148076507483173
 Epoch 10/10
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2222 - mean_absolute_error: 0.1384
-RMSE: 0.21580469184790685
-RMSE bags: 0.21453566109187186
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2215 - mean_absolute_error: 0.1372
+RMSE: 0.21552966409573604
+RMSE bags: 0.21462216648972973
 Epoch 11/11
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2218 - mean_absolute_error: 0.1377
-RMSE: 0.21550720798190948
-RMSE bags: 0.21441288168130332
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2214 - mean_absolute_error: 0.1368
+RMSE: 0.2167450203710096
+RMSE bags: 0.21445232013750687
 Epoch 12/12
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2214 - mean_absolute_error: 0.1369
-Epoch 12/12
-RMSE: 0.2166922086308751
-RMSE bags: 0.2143186507634938
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2213 - mean_absolute_error: 0.1364
+RMSE: 0.21664675772755018
+RMSE bags: 0.2143619048687673
 Epoch 13/13
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2212 - mean_absolute_error: 0.1364
-RMSE: 0.2156060527421784
-RMSE bags: 0.21419914263851797
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2212 - mean_absolute_error: 0.1361
+RMSE: 0.21613640147176458
+RMSE bags: 0.21428116180845477
 Epoch 14/14
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2213 - mean_absolute_error: 0.1360
-RMSE: 0.21599870241914323
-RMSE bags: 0.2141337458282634
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2213 - mean_absolute_error: 0.1359
+RMSE: 0.2160485097170228
+RMSE bags: 0.2142181336302171
 Epoch 15/15
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2221 - mean_absolute_error: 0.1360
-RMSE: 0.215773220383164
-RMSE bags: 0.21404439949219406
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2211 - mean_absolute_error: 0.1355
+RMSE: 0.21647921517972907
+RMSE bags: 0.2141342464793336
 Epoch 16/16
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2216 - mean_absolute_error: 0.1354
-RMSE: 0.21594672840701643
-RMSE bags: 0.21398780559232394
+2492/2492 [==============================] - 66s 26ms/step - loss: 0.2210 - mean_absolute_error: 0.1350
+RMSE: 0.21725798625522827
+RMSE bags: 0.21407695226779838
 Epoch 17/17
-2489/2492 [============================>.] - ETA: 0s - loss: 0.2213 - mean_absolute_error: 0.1351   Epoch 17/17
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2214 - mean_absolute_error: 0.1351
-RMSE: 0.21602352062186472
-RMSE bags: 0.21393535525836174
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2211 - mean_absolute_error: 0.1347
+RMSE: 0.21620652330316026
+RMSE bags: 0.21401855210990442
 Epoch 18/18
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2209 - mean_absolute_error: 0.1346
-RMSE: 0.21604935445261483
-RMSE bags: 0.21386952594126943
-Epoch 19/19
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2206 - mean_absolute_error: 0.1342
-RMSE: 0.21652610746586287
-RMSE bags: 0.2138229456738561
-Epoch 20/20
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2223 - mean_absolute_error: 0.1344
-RMSE: 0.21799218524166106
-RMSE bags: 0.21380270474005655
-Epoch 21/21
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2228 - mean_absolute_error: 0.1345
-RMSE: 0.21727741969091502
-RMSE bags: 0.21375875966523503
-Epoch 22/22
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2228 - mean_absolute_error: 0.1344
-RMSE: 0.21812397882559076
-RMSE bags: 0.21374454681808844
-Epoch 23/23
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2223 - mean_absolute_error: 0.1340
-RMSE: 0.21625086526756268
-RMSE bags: 0.21371160638806588
-Epoch 24/24
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2215 - mean_absolute_error: 0.1335
-RMSE: 0.21659540782156436
-RMSE bags: 0.21367538285761095
-Epoch 25/25
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2209 - mean_absolute_error: 0.1332
-RMSE: 0.2165070771204546
-RMSE bags: 0.2136673261870648
-Epoch 26/26
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2208 - mean_absolute_error: 0.1330
-RMSE: 0.21785276916725976
-RMSE bags: 0.21364576583685346
-Epoch 27/27
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2207 - mean_absolute_error: 0.1325
-RMSE: 0.21782723884272207
-RMSE bags: 0.21363646607650713
-Epoch 28/28
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2206 - mean_absolute_error: 0.1323
-RMSE: 0.216986778296493
-RMSE bags: 0.21361035188919517
-Epoch 1/1
-2492/2492 [==============================] - 64s 26ms/step - loss: 0.2346 - mean_absolute_error: 0.1496
-Epoch 1/1
-RMSE: 0.219599362952194
-RMSE bags: 0.21364201586612308
-Epoch 2/2
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2271 - mean_absolute_error: 0.1456
-RMSE: 0.21756606342132842
-RMSE bags: 0.21366056990047644
-Epoch 3/3
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2256 - mean_absolute_error: 0.1439
-RMSE: 0.2169791553664575
-RMSE bags: 0.21367767471701324
-Epoch 4/4
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2245 - mean_absolute_error: 0.1429
-RMSE: 0.2166907522681674
-RMSE bags: 0.21369360909533588
-Epoch 5/5
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2238 - mean_absolute_error: 0.1420
-RMSE: 0.21694041896913788
-RMSE bags: 0.21370630347910652
-Epoch 6/6
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2236 - mean_absolute_error: 0.1414
-RMSE: 0.21600917557970065
-RMSE bags: 0.21369602543032307
-Epoch 7/7
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2230 - mean_absolute_error: 0.1406
-RMSE: 0.21619002303759985
-RMSE bags: 0.21369506866687876
-Epoch 8/8
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2228 - mean_absolute_error: 0.1399
-RMSE: 0.2157734755973261
-RMSE bags: 0.21368477010856654
-Epoch 9/9
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2226 - mean_absolute_error: 0.1393
-RMSE: 0.2152520275420221
-RMSE bags: 0.2136727054236177
-Epoch 10/10
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2224 - mean_absolute_error: 0.1387
-RMSE: 0.21617819187928577
-RMSE bags: 0.21367612401804503
-Epoch 11/11
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2220 - mean_absolute_error: 0.1378
-RMSE: 0.21549791822932785
-RMSE bags: 0.2136584945268385
-Epoch 12/12
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2216 - mean_absolute_error: 0.1372
-RMSE: 0.2159367027570734
-RMSE bags: 0.21365874030687146
-Epoch 13/13
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2213 - mean_absolute_error: 0.1367
-RMSE: 0.21598605011680228
-RMSE bags: 0.21364745128035204
-Epoch 14/14
-2492/2492 [==============================] - 63s 25ms/step - loss: 0.2211 - mean_absolute_error: 0.1361
-RMSE: 0.21568760329589987
-RMSE bags: 0.21363519260675304
-Epoch 15/15
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2210 - mean_absolute_error: 0.1357
-RMSE: 0.2165167321782653
-RMSE bags: 0.21362075313132728
-Epoch 16/16
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2207 - mean_absolute_error: 0.1352
-RMSE: 0.2167496387073038
-RMSE bags: 0.21361015029081792
-Epoch 17/17
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2207 - mean_absolute_error: 0.1348
-RMSE: 0.21604293139907196
-RMSE bags: 0.21359742908345547
-Epoch 18/18
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2207 - mean_absolute_error: 0.1344
-RMSE: 0.21581631542950394
-RMSE bags: 0.2135813763304528
-Epoch 19/19
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2205 - mean_absolute_error: 0.1341
-RMSE: 0.21632431571467522
-RMSE bags: 0.2135717950173114
-Epoch 20/20
-2492/2492 [==============================] - 63s 25ms/step - loss: 0.2207 - mean_absolute_error: 0.1337
-RMSE: 0.21669397956182543
-RMSE bags: 0.21355511134765356
-Epoch 21/21
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2205 - mean_absolute_error: 0.1332
-RMSE: 0.21732181079991877
-RMSE bags: 0.21353927135462167
-Epoch 22/22
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2206 - mean_absolute_error: 0.1329
-Epoch 22/22
-RMSE: 0.21774381787419053
-RMSE bags: 0.21353159177971667
-Epoch 23/23
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2206 - mean_absolute_error: 0.1325
-RMSE: 0.21789482861877404
-RMSE bags: 0.21352132486725683
-Epoch 24/24
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.2214 - mean_absolute_error: 0.1323
-RMSE: 0.21687340418135395
-RMSE bags: 0.21350344810272634
-Epoch 25/25
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.3081 - mean_absolute_error: 0.1367
-RMSE: 0.2196382307565968
-RMSE bags: 0.21350355710300192
-Epoch 26/26
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.4601 - mean_absolute_error: 0.1407
-RMSE: 0.21877706186693852
-RMSE bags: 0.21349967081491064
-Epoch 27/27
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.5131 - mean_absolute_error: 0.1403
-RMSE: 0.21920902694359526
-RMSE bags: 0.21349788912015047
-Epoch 28/28
-2492/2492 [==============================] - 62s 25ms/step - loss: 0.5696 - mean_absolute_error: 0.1404
-RMSE: 0.21994297398257676
-RMSE bags: 0.2135039377181423
-Epoch 1/1
-2490/2492 [============================>.] - ETA: 0s - loss: 0.2347 - mean_absolute_error: 0.1495     Epoch 1/1
-2492/2492 [==============================] - 67s 27ms/step - loss: 0.2347 - mean_absolute_error: 0.1495
-RMSE: 0.21934124365964477
-RMSE bags: 0.21352975125550974
-Epoch 2/2
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2272 - mean_absolute_error: 0.1455
-RMSE: 0.21818887262178432
-RMSE bags: 0.21354846708432135
-Epoch 3/3
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2256 - mean_absolute_error: 0.1440
-RMSE: 0.21703244411660336
-RMSE bags: 0.21356043780007428
-Epoch 4/4
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2245 - mean_absolute_error: 0.1427
-RMSE: 0.21657861774704706
-RMSE bags: 0.2135711913363945
-Epoch 5/5
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2239 - mean_absolute_error: 0.1418
-RMSE: 0.21648916606219762
-RMSE bags: 0.21357374723064987
-Epoch 6/6
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2233 - mean_absolute_error: 0.1410
-RMSE: 0.21590358756435774
-RMSE bags: 0.21357626706302693
-Epoch 7/7
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2231 - mean_absolute_error: 0.1406
-RMSE: 0.2156174197095797
-RMSE bags: 0.2135786804981791
-Epoch 8/8
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2228 - mean_absolute_error: 0.1398
-RMSE: 0.21584325006974076
-RMSE bags: 0.2135744875120727
-Epoch 9/9
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2226 - mean_absolute_error: 0.1392
-RMSE: 0.21671553202565857
-RMSE bags: 0.21356584030579492
-Epoch 10/10
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2223 - mean_absolute_error: 0.1385
-RMSE: 0.21621227266412435
-RMSE bags: 0.21356740551201747
-Epoch 11/11
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2218 - mean_absolute_error: 0.1376
-RMSE: 0.21614469070973258
-RMSE bags: 0.21356577412383101
-Epoch 12/12
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2216 - mean_absolute_error: 0.1371
-RMSE: 0.2155990307714033
-RMSE bags: 0.2135611538707667
-Epoch 13/13
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2213 - mean_absolute_error: 0.1365
-RMSE: 0.21555934148389067
-RMSE bags: 0.2135564259397461
-Epoch 14/14
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2210 - mean_absolute_error: 0.1359
-RMSE: 0.21602174609618738
-RMSE bags: 0.2135569274975923
-Epoch 15/15
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2210 - mean_absolute_error: 0.1356
-RMSE: 0.2160856744029581
-RMSE bags: 0.21354998000057956
-Epoch 16/16
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2209 - mean_absolute_error: 0.1351
-RMSE: 0.2163169158255477
-RMSE bags: 0.21354058941107287
-Epoch 17/17
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2208 - mean_absolute_error: 0.1346
-RMSE: 0.2169580279244466
-RMSE bags: 0.21353983934381904
-Epoch 18/18
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2207 - mean_absolute_error: 0.1341
-RMSE: 0.2166800257619827
-RMSE bags: 0.2135358314158332
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2210 - mean_absolute_error: 0.1342
+RMSE: 0.21616940289815825
+RMSE bags: 0.2139824843452162
 Epoch 19/19
 2492/2492 [==============================] - 65s 26ms/step - loss: 0.2208 - mean_absolute_error: 0.1338
-RMSE: 0.216418926961976
-RMSE bags: 0.21352667522859922
+RMSE: 0.21650131826307462
+RMSE bags: 0.21394390500512767
 Epoch 20/20
-2489/2492 [============================>.] - ETA: 0s - loss: 0.2207 - mean_absolute_error: 0.1332   Epoch 20/20
-2492/2492 [==============================] - 66s 26ms/step - loss: 0.2207 - mean_absolute_error: 0.1332
-RMSE: 0.21725509461447742
-RMSE bags: 0.21351971455214558
+2489/2492 [============================>.] - ETA: 0s - loss: 0.2209 - mean_absolute_error: 0.1335   Epoch 20/20
+2492/2492 [==============================] - 66s 26ms/step - loss: 0.2209 - mean_absolute_error: 0.1335
+RMSE: 0.21696419836643896
+RMSE bags: 0.21390168913721133
 Epoch 21/21
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2207 - mean_absolute_error: 0.1328
-RMSE: 0.2179361936244204
-RMSE bags: 0.21351159277042248
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2209 - mean_absolute_error: 0.1331
+RMSE: 0.2173355907175484
+RMSE bags: 0.21388166253382326
 Epoch 22/22
-2489/2492 [============================>.] - ETA: 0s - loss: 0.2206 - mean_absolute_error: 0.1323   Epoch 22/22
-2492/2492 [==============================] - 66s 26ms/step - loss: 0.2206 - mean_absolute_error: 0.1323
-RMSE: 0.21841015888416448
-RMSE bags: 0.2135030189301283
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.3155 - mean_absolute_error: 0.1381
+RMSE: 0.21878691146320958
+RMSE bags: 0.21385486767039083
 Epoch 23/23
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2207 - mean_absolute_error: 0.1319
-RMSE: 0.21757174048797345
-RMSE bags: 0.21349414354463694
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.4101 - mean_absolute_error: 0.1394
+RMSE: 0.22014303182745085
+RMSE bags: 0.21386207487624936
 Epoch 24/24
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2206 - mean_absolute_error: 0.1313
-RMSE: 0.21774696540533245
-RMSE bags: 0.21348438924048332
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.5594 - mean_absolute_error: 0.1401
+RMSE: 0.22002086566994236
+RMSE bags: 0.21388341081617485
 Epoch 25/25
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2206 - mean_absolute_error: 0.1308
-RMSE: 0.21804694399929847
-RMSE bags: 0.21347996621017698
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.5433 - mean_absolute_error: 0.1391
+RMSE: 0.2206547201185324
+RMSE bags: 0.21389499429201747
 Epoch 26/26
-2489/2492 [============================>.] - ETA: 0s - loss: 0.2204 - mean_absolute_error: 0.1302   Epoch 26/26
-2492/2492 [==============================] - 66s 26ms/step - loss: 0.2205 - mean_absolute_error: 0.1302
-RMSE: 0.21878566936451774
-RMSE bags: 0.2134726089587604
-Epoch 27/27
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2206 - mean_absolute_error: 0.1298
-RMSE: 0.21914651379348704
-RMSE bags: 0.21346210087089582
-Epoch 28/28
-2492/2492 [==============================] - 65s 26ms/step - loss: 0.2207 - mean_absolute_error: 0.1293
-RMSE: 0.22120705324953258
-RMSE bags: 0.21345108553731665
+2492/2492 [==============================] - 66s 26ms/step - loss: 0.5149 - mean_absolute_error: 0.1390
 
+RMSE: 0.21905090647803602
+RMSE bags: 0.21391407955039501
+Epoch 27/27
+2492/2492 [==============================] - 66s 26ms/step - loss: 0.4630 - mean_absolute_error: 0.1388
+RMSE: 0.22081256086588658
+RMSE bags: 0.21394294706982614
+Epoch 28/28
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.3802 - mean_absolute_error: 0.1388
+RMSE: 0.21867609668814975
+RMSE bags: 0.21394782585214445
+Epoch 29/29
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.3135 - mean_absolute_error: 0.1386
+RMSE: 0.21857820054761626
+RMSE bags: 0.21396395835178592
+Epoch 30/30
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2762 - mean_absolute_error: 0.1386
+RMSE: 0.21873351888983877
+RMSE bags: 0.2139643349242654
+Epoch 1/1
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2372 - mean_absolute_error: 0.1509
+RMSE: 0.22060107273934215
+RMSE bags: 0.21400235801734277
+Epoch 2/2
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2291 - mean_absolute_error: 0.1454
+RMSE: 0.21879798363485228
+RMSE bags: 0.21402856111979615
+Epoch 3/3
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2268 - mean_absolute_error: 0.1433
+RMSE: 0.21783729786581102
+RMSE bags: 0.21403607940512215
+Epoch 4/4
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2251 - mean_absolute_error: 0.1416
+RMSE: 0.21669579616396203
+RMSE bags: 0.21403593620673744
+Epoch 5/5
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2241 - mean_absolute_error: 0.1405
+RMSE: 0.21672678605475504
+RMSE bags: 0.2140188211088136
+Epoch 6/6
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2234 - mean_absolute_error: 0.1397
+RMSE: 0.21616835965908696
+RMSE bags: 0.2140102416210428
+Epoch 7/7
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2229 - mean_absolute_error: 0.1389
+RMSE: 0.21616842472732653
+RMSE bags: 0.21399944865352286
+Epoch 8/8
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2225 - mean_absolute_error: 0.1384
+RMSE: 0.21665889639455005
+RMSE bags: 0.2139963807847883
+Epoch 9/9
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2224 - mean_absolute_error: 0.1379
+RMSE: 0.21627614283063823
+RMSE bags: 0.21398511273548282
+Epoch 10/10
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2221 - mean_absolute_error: 0.1374
+RMSE: 0.21554384956970418
+RMSE bags: 0.2139568042124387
+Epoch 11/11
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2219 - mean_absolute_error: 0.1370
+RMSE: 0.21567181717334336
+RMSE bags: 0.21392901593484198
+Epoch 12/12
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2215 - mean_absolute_error: 0.1364
+RMSE: 0.2162558116504721
+RMSE bags: 0.21391079101160596
+Epoch 13/13
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2213 - mean_absolute_error: 0.1361
+
+RMSE: 0.21592802539989198
+RMSE bags: 0.21388613333658935
+Epoch 14/14
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2211 - mean_absolute_error: 0.1357
+RMSE: 0.21721898223101307
+RMSE bags: 0.21386854117279125
+Epoch 15/15
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2212 - mean_absolute_error: 0.1355
+RMSE: 0.21743041563124998
+RMSE bags: 0.21384168331307765
+Epoch 16/16
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2211 - mean_absolute_error: 0.1350
+Epoch 16/16
+RMSE: 0.21844872456861855
+RMSE bags: 0.2138189976767084
+Epoch 17/17
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2210 - mean_absolute_error: 0.1347
+RMSE: 0.2171292200388435
+RMSE bags: 0.21380202646919502
+Epoch 18/18
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2209 - mean_absolute_error: 0.1343
+RMSE: 0.21673305047436078
+RMSE bags: 0.2137848858929853
+Epoch 19/19
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2211 - mean_absolute_error: 0.1340
+RMSE: 0.21666184138927744
+RMSE bags: 0.21376296473457232
+Epoch 20/20
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2208 - mean_absolute_error: 0.1337
+Epoch 20/20
+RMSE: 0.21680729268205112
+RMSE bags: 0.21374734408764126
+Epoch 21/21
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2209 - mean_absolute_error: 0.1334
+RMSE: 0.217349864240077
+RMSE bags: 0.2137295264179942
+Epoch 22/22
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2209 - mean_absolute_error: 0.1330
+RMSE: 0.21745324797711013
+RMSE bags: 0.21371382433692274
+Epoch 23/23
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2208 - mean_absolute_error: 0.1326
+RMSE: 0.21703842363710785
+RMSE bags: 0.2137021791197466
+Epoch 24/24
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2208 - mean_absolute_error: 0.1323
+RMSE: 0.21768452227616308
+RMSE bags: 0.2136868832458267
+Epoch 25/25
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2207 - mean_absolute_error: 0.1320
+RMSE: 0.2193322776520206
+RMSE bags: 0.21367568210953033
+Epoch 26/26
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2207 - mean_absolute_error: 0.1316
+RMSE: 0.21789269627102106
+RMSE bags: 0.21366069613306385
+Epoch 27/27
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2205 - mean_absolute_error: 0.1311
+Epoch 27/27
+RMSE: 0.21810016840529795
+RMSE bags: 0.21364487740463226
+Epoch 28/28
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2207 - mean_absolute_error: 0.1309
+RMSE: 0.21882182272823794
+RMSE bags: 0.21363549793372388
+Epoch 29/29
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2206 - mean_absolute_error: 0.1305
+RMSE: 0.21932876955281824
+RMSE bags: 0.21362086546937373
+Epoch 30/30
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2205 - mean_absolute_error: 0.1300
+RMSE: 0.21950565936612942
+RMSE bags: 0.21361120781127516
+Epoch 1/1
+2492/2492 [==============================] - 65s 26ms/step - loss: 0.2372 - mean_absolute_error: 0.1504
+RMSE: 0.2200374159176743
+RMSE bags: 0.2136298201635869
+Epoch 2/2
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2288 - mean_absolute_error: 0.1453
+RMSE: 0.21933832344151974
+RMSE bags: 0.2136490272762485
+Epoch 3/3
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2265 - mean_absolute_error: 0.1432
+RMSE: 0.21752650820190617
+RMSE bags: 0.2136531468028395
+Epoch 4/4
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2250 - mean_absolute_error: 0.1416
+RMSE: 0.21690656333267858
+RMSE bags: 0.21365808739847067
+Epoch 5/5
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2240 - mean_absolute_error: 0.1405
+RMSE: 0.21655868880395543
+RMSE bags: 0.21366250722871769
+Epoch 6/6
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2235 - mean_absolute_error: 0.1397
+RMSE: 0.2175383454887492
+RMSE bags: 0.21366580327180332
+Epoch 7/7
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2229 - mean_absolute_error: 0.1390
+RMSE: 0.21688887943898677
+RMSE bags: 0.21366991092035448
+Epoch 8/8
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2224 - mean_absolute_error: 0.1385
+RMSE: 0.2168638235671314
+RMSE bags: 0.21367405314417234
+Epoch 9/9
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2222 - mean_absolute_error: 0.1378
+RMSE: 0.21619496707133362
+RMSE bags: 0.21367518165637886
+Epoch 10/10
+2491/2492 [============================>.] - ETA: 0s - loss: 0.2220 - mean_absolute_error: 0.1374   Epoch 10/10
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2219 - mean_absolute_error: 0.1374
+RMSE: 0.2166895706764423
+RMSE bags: 0.21367249042800956
+Epoch 11/11
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2219 - mean_absolute_error: 0.1369
+RMSE: 0.21649891262824103
+RMSE bags: 0.21366914777339907
+Epoch 12/12
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2218 - mean_absolute_error: 0.1366
+RMSE: 0.21718013888289364
+RMSE bags: 0.21367281512216424
+Epoch 13/13
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2218 - mean_absolute_error: 0.1363
+RMSE: 0.21769080325597776
+RMSE bags: 0.21367164548688494
+Epoch 14/14
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2216 - mean_absolute_error: 0.1359
+RMSE: 0.2166890585264033
+RMSE bags: 0.21366988602109235
+Epoch 15/15
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2216 - mean_absolute_error: 0.1355
+RMSE: 0.21674567918486992
+RMSE bags: 0.21366930152590521
+Epoch 16/16
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2217 - mean_absolute_error: 0.1352
+RMSE: 0.21712141149782482
+RMSE bags: 0.21366547491896423
+Epoch 17/17
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2215 - mean_absolute_error: 0.1349
+RMSE: 0.2176836504523436
+RMSE bags: 0.21366391402673862
+Epoch 18/18
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2214 - mean_absolute_error: 0.1345
+RMSE: 0.21724125845103923
+RMSE bags: 0.21365944703737338
+Epoch 19/19
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2215 - mean_absolute_error: 0.1342
+RMSE: 0.21848654354271985
+RMSE bags: 0.21365800948241556
+Epoch 20/20
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2214 - mean_absolute_error: 0.1337
+RMSE: 0.21766279617597784
+RMSE bags: 0.21365404659982898
+Epoch 21/21
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2214 - mean_absolute_error: 0.1334
+RMSE: 0.21862028058808422
+RMSE bags: 0.213652361249084
+Epoch 22/22
+2492/2492 [==============================] - 64s 25ms/step - loss: 0.2213 - mean_absolute_error: 0.1331
+RMSE: 0.21799154116013061
+RMSE bags: 0.21364901182078197
+Epoch 23/23
+2492/2492 [==============================] - 64s 25ms/step - loss: 0.2213 - mean_absolute_error: 0.1327
+RMSE: 0.21877220968021413
+RMSE bags: 0.2136505439739601
+Epoch 24/24
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2213 - mean_absolute_error: 0.1323
+RMSE: 0.21978302325220433
+RMSE bags: 0.2136516172023452
+Epoch 25/25
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2211 - mean_absolute_error: 0.1318
+RMSE: 0.22088693647906224
+RMSE bags: 0.21364967787888478
+Epoch 26/26
+2492/2492 [==============================] - 64s 25ms/step - loss: 0.2212 - mean_absolute_error: 0.1315
+RMSE: 0.21894879049740007
+RMSE bags: 0.21364799016747882
+Epoch 27/27
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.2211 - mean_absolute_error: 0.1311
+RMSE: 0.21973349307611592
+RMSE bags: 0.2136453398292589
+Epoch 28/28
+2492/2492 [==============================] - 63s 25ms/step - loss: 0.2211 - mean_absolute_error: 0.1307
+RMSE: 0.21997911826701794
+RMSE bags: 0.21364231288344412
+Epoch 29/29
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.4016 - mean_absolute_error: 0.1389
+RMSE: 0.2221130553832405
+RMSE bags: 0.21365965857143832
+Epoch 30/30
+2492/2492 [==============================] - 64s 26ms/step - loss: 0.7797 - mean_absolute_error: 0.1421
+RMSE: 0.22085652459119454
+RMSE bags: 0.21367209801646164
 
 '''
