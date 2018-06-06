@@ -10,7 +10,7 @@ from sklearn import preprocessing
 from nltk.corpus import stopwords 
 from sklearn.pipeline import FeatureUnion
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from scipy.sparse import hstack, csr_matrix, vstack
+from scipy.sparse import hstack, csr_matrix
 from sklearn.model_selection import train_test_split
 import lightgbm as lgb
 import matplotlib.pyplot as plt
@@ -26,7 +26,6 @@ path = '/Users/dhanley2/Documents/avito/data/'
 #path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = False
-first_text_run = True
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
@@ -72,11 +71,18 @@ for col in featimgmeta.columns.values[1:]:
     df[col].astype(np.float32, inplace = True)
     
 print('[{}] Load translated image engineered features'.format(time.time() - start_time))
-if first_text_run:
-    dftrl = pd.concat([pd.read_csv(path + '../features/translate_trn_en.csv.gz', compression = 'gzip').set_index('item_id'),
-                            pd.read_csv(path + '../features/translate_tst_en.csv.gz', compression = 'gzip').set_index('item_id')])
-    dftrl.columns = [c.replace('_translated', '') for c in dftrl.columns]
-    dftrl.drop(['parent_category_name', 'category_name'], axis = 1, inplace = True)
+feattrlten = pd.concat([pd.read_csv(path + '../features/translate_trn_en.csv.gz', compression = 'gzip'),
+                        pd.read_csv(path + '../features/translate_tst_en.csv.gz', compression = 'gzip')])
+# feattrlten = pd.concat([pd.read_pickle(path + '../features/translate_trn_en.pkl'),
+#                        pd.read_pickle(path + '../features/translate_tst_en.pkl')])
+feattrlten.fillna('', inplace = True)
+feattrlten['translation'] = feattrlten['title_translated'] + ' ' + feattrlten['param_1_translated'] + ' ' \
+            + feattrlten['param_2_translated'] + ' ' + feattrlten['param_3_translated'] + ' '  \
+            + feattrlten['category_name_translated'] + ' ' + feattrlten['parent_category_name_translated']
+feattrlten = feattrlten.set_index('item_id')[['translation']]
+feattrlten.head()
+df = pd.merge(df, feattrlten, left_index=True, right_index=True, how='left')
+del feattrlten
 gc.collect()
  
 print('[{}] Load other engineered features'.format(time.time() - start_time))
@@ -118,6 +124,24 @@ df.head()
 df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc],axis=1)
 #df['ridge_txt'] = featrdgtxt['ridge_preds'].values
 #df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
+
+print('[{}] Create folds'.format(time.time() - start_time))
+foldls = [["2017-03-15", "2017-03-16", "2017-03-17"], \
+       ["2017-03-18", "2017-03-19", "2017-03-20"], \
+       ["2017-03-21", "2017-03-22", "2017-03-23"], \
+       ["2017-03-24", "2017-03-25", "2017-03-26"], \
+        ["2017-03-27", "2017-03-28", "2017-03-29", \
+            "2017-03-30", "2017-03-31", "2017-04-01", \
+            "2017-04-02", "2017-04-03","2017-04-07"]]
+foldls = [[pd.to_datetime(d) for d in f] for f in foldls]
+df['fold'] = -1
+for t, fold in enumerate(foldls):
+    df['fold'][df.activation_date.isin(fold)] = t
+df['fold'].value_counts()
+df.head()
+
+
+
 df['ridge_img'] = featrdgimg['ridge_img_preds'].values
 df = df.set_index('item_id')
 df.drop(['index'], axis=1,inplace=True)
@@ -152,21 +176,17 @@ df.dtypes
 
 
 print('[{}] Text Features'.format(time.time() - start_time))
-def text_features(df_):
-    df_['text_feat'] = df_.apply(lambda row: ' '.join([str(row['param_1']), str(row['param_2']), str(row['param_3'])]),axis=1) # Group Param Features
-    df_.drop(["param_1","param_2","param_3"],axis=1,inplace=True)
-    df_['description'].fillna('unknowndescription', inplace=True)
-    df_['title'].fillna('unknowntitle', inplace=True)
-    
-    df_['text']      = (df_['description'].fillna('') + ' ' + df_['title'] + ' ' + 
-      df_['parent_category_name'].fillna('').astype(str) + ' ' + df_['category_name'].fillna('').astype(str) )
-    return df_
-df    = text_features(df)
-if first_text_run:
-    dftrl['parent_category_name'] = df['parent_category_name']
-    dftrl['category_name'] = df['category_name']
-    dftrl = text_features(dftrl)
-gc.collect()
+df['text_feat'] = df.apply(lambda row: ' '.join([
+    str(row['param_1']), 
+    str(row['param_2']), 
+    str(row['param_3'])]),axis=1) # Group Param Features
+df.drop(["param_1","param_2","param_3"],axis=1,inplace=True)
+
+print('[{}] Text Features'.format(time.time() - start_time))
+df['description'].fillna('unknowndescription', inplace=True)
+df['title'].fillna('unknowntitle', inplace=True)
+df['text']      = (df['description'].fillna('') + ' ' + df['title'] + ' ' + 
+  df['parent_category_name'].fillna('').astype(str) + ' ' + df['category_name'].fillna('').astype(str) )
 
 print('[{}] Create Time Variables'.format(time.time() - start_time))
 df["Weekday"] = df['activation_date'].dt.weekday
@@ -179,35 +199,30 @@ df.columns
 print('[{}] Encode Variables'.format(time.time() - start_time))
 df.drop(['user_id'], 1, inplace = True)
 categorical = ["region","parent_category_name","user_type", 'city', 'category_name', "item_seq_number", 'image_top_1']
-'''
 print("Encoding :",categorical)
 # Encoder:
 lbl = preprocessing.LabelEncoder()
 for col in categorical:
     df[col] = lbl.fit_transform(df[col].astype(str))
-'''
   
 print('[{}] Meta Text Features'.format(time.time() - start_time))
-def strlower(df_):
-    textfeats = ["description","text_feat", "title", 'text']
-    for cols in textfeats:
-        df_[cols] = df_[cols].astype(str) 
-        df_[cols] = df_[cols].astype(str).fillna('nicapotato') # FILL NA
-        df_[cols] = df_[cols].str.lower() # Lowercase all text, so that capitalized words dont get treated differently
-    return df_
-df    = strlower(df)
-if first_text_run:
-    dftrl = strlower(dftrl)
-    
-textfeats = ["description","text_feat", "title", 'text']
-for cols in textfeats:    
+textfeats = ["description","text_feat", "title"]
+for cols in textfeats:
+    df[cols] = df[cols].astype(str) 
+    df[cols] = df[cols].astype(str).fillna('nicapotato') # FILL NA
+    df[cols] = df[cols].str.lower() # Lowercase all text, so that capitalized words dont get treated differently
     df[cols + '_num_chars'] = df[cols].apply(len) # Count number of Characters
     df[cols + '_num_words'] = df[cols].apply(lambda comment: len(comment.split())) # Count number of Words
     df[cols + '_num_unique_words'] = df[cols].apply(lambda comment: len(set(w for w in comment.split())))
     df[cols + '_words_vs_unique'] = df[cols+'_num_unique_words'] / df[cols+'_num_words'] * 100 # Count Unique Words
     gc.collect()
 df.info()
+for cols in ['translation']:
+    df[cols] = df[cols].astype(str) 
+    df[cols] = df[cols].astype(str).fillna('nicapotato') # FILL NA
+    df[cols] = df[cols].str.lower() # Lowercase all text, so that capitalized words dont get treated differently
 
+    
 print('[{}] Manage Memory'.format(time.time() - start_time))
 for col in df.columns:
     if np.float64 == df[col].dtype:
@@ -238,36 +253,24 @@ def parallelize(data, func):
     pool.join()
     return data
 
-def morph_it(df_, fname, text_cols, load_text):
-    if load_text:
-        dftxt = pd.read_csv(path + fname, compression = 'gzip', usecols = text_cols)
-        for col in text_cols:
-            print(col + ' load tokenised [{}]'.format(time.time() - start_time))
-            df_[col] = dftxt[col].values
-            df_[col].fillna(' ', inplace = True)
-        del dftxt
-    else:
-        for col in text_cols:
-            print(col + ' tokenise [{}]'.format(time.time() - start_time))
-            df_[col] = parallelize(df_[col], tokCol)
-        df_[text_cols].to_csv(path + fname, compression = 'gzip')
-    gc.collect()
-    return df_
-
-load_text  = False
-text_cols  = ['text', 'text_feat', 'title']
-fnamedf    = '../features/text_features_morphed.csv.gz'
-fnamedftrl = '../features/text_features_morphed_augment.csv.gz'
-df    = morph_it(df    , fnamedf   , text_cols, load_text)
-text_cols  = ['text', 'title']
-fnamedftrl = '../features/text_features_morphed_augment.csv.gz'
-if first_text_run:
-    dftrl = morph_it(dftrl , fnamedftrl, text_cols, load_text)
+load_text = False
+text_cols = ['description', 'text', 'text_feat', 'title', 'translation']
+if load_text:
+    dftxt = pd.read_csv(path + '../features/text_features_morphed.csv.gz', compression = 'gzip')
+    for col in text_cols:
+        print(col + ' load tokenised [{}]'.format(time.time() - start_time))
+        df[col] = dftxt[col].values
+        df.fillna(' ', inplace = True)
+    del dftxt
 else:
-    dftrl = pd.read_csv(path + fnamedftrl, compression = 'gzip', usecols = text_cols)
+    for col in text_cols:
+        print(col + ' tokenise [{}]'.format(time.time() - start_time))
+        df[col] = parallelize(df[col], tokCol)
+    df[text_cols].to_csv(path + '../features/text_features_morphed.csv.gz', compression = 'gzip')
 gc.collect()
-print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
 
+print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
+df.head()
 print('[{}] [TF-IDF] Term Frequency Inverse Document Frequency Stage'.format(time.time() - start_time))
 russian_stop = set(stopwords.words('russian'))
 tfidf_para = {
@@ -285,7 +288,7 @@ countv_para = {
     "min_df": 5 #False
 }
 def get_col(col_name): return lambda x: x[col_name]
-vectorizer1 = FeatureUnion([
+vectorizer = FeatureUnion([
         ('text',TfidfVectorizer(
             ngram_range=(1, 2),
             max_features=50000,
@@ -297,65 +300,25 @@ vectorizer1 = FeatureUnion([
         ('title',CountVectorizer(
             **countv_para,
             preprocessor=get_col('title'))),
-    ])
-vectorizer2 = FeatureUnion([
-        ('text',TfidfVectorizer(
-            ngram_range=(1, 2),
+        ('translation',TfidfVectorizer(
+            #ngram_range=(1, 2),
             max_features=40000,
             **tfidf_para,
-            preprocessor=get_col('text'))),
-        ('title',TfidfVectorizer(
-            max_features=20000,
-            **tfidf_para,
-            preprocessor=get_col('title'))),
+            preprocessor=get_col('translation'))),
     ])
-
-dftrl.index = df.index
-dftrl.fillna('', inplace = True)
-dftrl.head()
+    
 start_vect=time.time()
-text_cols = ['text', 'text_feat', 'title']
-vectorizer1.fit(df[text_cols].loc[traindex,:].to_dict('records'))
-text_cols = ['text', 'title']
-vectorizer2.fit(dftrl[text_cols].loc[traindex,:].to_dict('records'))
-ready_df    = vectorizer1.transform(df.to_dict('records'))
-ready_dftrl = vectorizer2.transform(dftrl.to_dict('records'))
-tfvocab1 = vectorizer1.get_feature_names()
-tfvocab2 = vectorizer2.get_feature_names()
-
+vectorizer.fit(df.loc[traindex,:].to_dict('records'))
+ready_df = vectorizer.transform(df.to_dict('records'))
+tfvocab = vectorizer.get_feature_names()
+tfvocab[:50]
 print('[{}] Vectorisation completed'.format(time.time() - start_time))
 # Drop Text Cols
-df.drop(textfeats+['text', 'all_titles'], axis=1,inplace=True)
-del dftrl
+df.drop(textfeats+['text', 'all_titles', 'translation'], axis=1,inplace=True)
 gc.collect()
 
 print('[{}] Drop all the categorical'.format(time.time() - start_time))
 df.drop(categorical, axis=1,inplace=True)
-gc.collect()
-
-ready_df.shape
-ready_dftrl.shape
-
-print('[{}] Modeling Stage'.format(time.time() - start_time))
-# Combine Dense Features with Sparse Text Bag of Words Features
-X_train = hstack([csr_matrix(df.loc[traindex,:][trnidx].values), \
-                  ready_df[0:traindex.shape[0]][trnidx] , \
-                  ready_dftrl[0:traindex.shape[0]][trnidx]])
-X_valid = hstack([csr_matrix(df.loc[traindex,:][validx].values), 
-                        ready_df[0:traindex.shape[0]][validx], 
-                        ready_dftrl[0:traindex.shape[0]][validx]])
-y_train = y[trnidx]
-y_valid = y[validx]
-testing = hstack([csr_matrix(df.loc[testdex,:].values), \
-                  ready_df[traindex.shape[0]:], \
-                  ready_dftrl[traindex.shape[0]:]])
-tfvocab = df.columns.tolist() + tfvocab1 + tfvocab2
-for shape in [X_train, X_valid,testing]:
-    print("{} Rows and {} Cols".format(*shape.shape))
-print("Feature Names Length: ",len(tfvocab))
-del df
-gc.collect();
-
 
 # Training and Validation Set
 lgbm_params = {
@@ -364,56 +327,63 @@ lgbm_params = {
     'objective' : 'regression',
     'metric' : 'rmse',
     'num_leaves' : 250,
+    'nthread': 4,
     'learning_rate' : 0.02,
     'feature_fraction' : 0.5,
     'verbosity' : 0
-}
+}    
+    # Placeholder for predictions
+df['fold'].value_counts()
+y_pred_trn = pd.Series(-np.zeros(df.loc[traindex,:].shape[0]), index = traindex)
+y_pred_tst = pd.Series(-np.zeros(df.loc[testdex ,:].shape[0]), index = testdex)
+for f in range(6):
+    print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
+    trnidx = (df['fold'].loc[traindex] != f).values
+    X_train = hstack([csr_matrix(df.drop('fold', 1).loc[traindex,:][trnidx].values),ready_df[0:traindex.shape[0]][trnidx]])
+    y_train = y[trnidx]
+    # 5 is the test fold
+    if f == 5:
+        X_test = hstack([csr_matrix(df.drop('fold', 1).loc[testdex,:].values),ready_df[traindex.shape[0]:]])
+    else:
+        X_test = hstack([csr_matrix(df.drop('fold', 1).loc[traindex,:][~trnidx].values),ready_df[0:traindex.shape[0]][~trnidx]])
+        y_test  = y[~trnidx]
+    tfvocab = df.drop('fold', 1).columns.tolist() + vectorizer.get_feature_names()
+    for shape in [X_train, X_test]:
+        print("Fold {} : {} Rows and {} Cols".format(f, *shape.shape))
+    gc.collect();
+    # LGBM Dataset Formatting 
+    lgtrain = lgb.Dataset(X_train, y_train,
+                    feature_name=tfvocab)
+    del X_train, y_train
+    gc.collect()
 
-# LGBM Dataset Formatting 
-lgtrain = lgb.Dataset(X_train, y_train,
-                feature_name=tfvocab)
-
-lgvalid = lgb.Dataset(X_valid, y_valid,
-                feature_name=tfvocab)
-
-# Go Go Go
-modelstart = time.time()
-if full:
     lgb_clf = lgb.train(
         lgbm_params,
-        lgtrain,
-        num_boost_round=1676, #14686,
-        valid_sets=[lgtrain, lgvalid],
-        valid_names=['train','valid'],
-        #early_stopping_rounds=500,
-        verbose_eval=20)    
-else:
-    lgb_clf = lgb.train(
-        lgbm_params,
-        lgtrain,
-        num_boost_round=15000,
-        valid_sets=[lgtrain, lgvalid],
-        valid_names=['train','valid'],
-        early_stopping_rounds=60,
-        verbose_eval=20)
+        lgtrain,    
+        num_boost_round = 2150,
+        verbose_eval=200)    
 
-# Feature Importance Plot
-f, ax = plt.subplots(figsize=[7,10])
-lgb.plot_importance(lgb_clf, max_num_features=50, ax=ax)
-plt.title("Light GBM Feature Importance")
-plt.savefig(path + '../plots/feature_import_0206A.png')
+    print("Model Evaluation Stage")
+    if f == 5:
+        y_pred_tst[:] = lgb_clf.predict(X_test)
+    else:
+        y_pred_trn[~trnidx] = lgb_clf.predict(X_test)
+        print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_pred_trn[~trnidx])))
+    del X_test
+    gc.collect()
 
-print("Model Evaluation Stage")
-print('RMSE:', np.sqrt(metrics.mean_squared_error(y_valid, lgb_clf.predict(X_valid))))
-lgpred = lgb_clf.predict(testing)
-lgsub = pd.DataFrame(lgpred,columns=["deal_probability"],index=testdex)
-lgsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
-#lgsub.to_csv(path + "../sub/lgsub_0206A.csv.gz",index=True,header=True, compression = 'gzip')
-print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
+
+lgsub = pd.concat([y_pred_trn, y_pred_tst]).reset_index()
+lgsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
+lgsub['deal_probability'].clip(0.0, 1.0, inplace=True)
+lgsub.set_index('item_id', inplace = True)
+print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, lgsub.loc[traindex])))
+# RMSE for all : 0.2168
+
+lgsub.to_csv("../sub/lgCV_0206A.csv.gz",index=True,header=True, compression = 'gzip')
 
 
 '''
-
 [20]    train's rmse: 0.240974  valid's rmse: 0.238612
 [40]    train's rmse: 0.230279  valid's rmse: 0.228192
 [60]    train's rmse: 0.224487  valid's rmse: 0.222723

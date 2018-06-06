@@ -93,7 +93,9 @@ featrdgimg = pd.read_csv(path + '../features/ridgeImg5CV.csv.gz', compression = 
 featrdgprc = pd.read_csv(path + '../features/price_seq_category_ratios.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featrdgprc.fillna(-1, inplace = True)
 featimgprc = pd.read_csv(path + '../features/price_imagetop1_ratios.gz', compression = 'gzip') # created with features/make/priceImgRatios2705.R
-featenc = pd.read_csv(path + '../features/alldf_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+featenc    = pd.read_csv(path + '../features/alldf_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+featimgrm  = pd.read_csv(path + '../features/img_top_oof_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+
 featct  = pd.read_csv(path + '../features/alldf_count.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featusrttl.rename(columns={'title': 'all_titles'}, inplace = True)
 df = df.reset_index().merge(featpop, on = 'city', how = 'left')
@@ -115,14 +117,14 @@ df.sort_values('idx', inplace = True)
 df.drop(['idx'], axis=1,inplace=True)
 df.reset_index(inplace = True)
 df.head()
-df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc],axis=1)
+df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc, featimgrm],axis=1)
 #df['ridge_txt'] = featrdgtxt['ridge_preds'].values
 #df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
 df['ridge_img'] = featrdgimg['ridge_img_preds'].values
 df = df.set_index('item_id')
 df.drop(['index'], axis=1,inplace=True)
 df.columns
-del featusrttl, featusrcat, featusrprd, featenc, featrdgprc, featimgprc
+del featusrttl, featusrcat, featusrprd, featenc, featrdgprc, featimgprc, featimgrm
 # del featusrttl, featusrcat, featusrprd, featenc, featrdgtxts
 gc.collect()
 
@@ -254,7 +256,7 @@ def morph_it(df_, fname, text_cols, load_text):
     gc.collect()
     return df_
 
-load_text  = False
+load_text  = True
 text_cols  = ['text', 'text_feat', 'title']
 fnamedf    = '../features/text_features_morphed.csv.gz'
 fnamedftrl = '../features/text_features_morphed_augment.csv.gz'
@@ -298,17 +300,7 @@ vectorizer1 = FeatureUnion([
             **countv_para,
             preprocessor=get_col('title'))),
     ])
-vectorizer2 = FeatureUnion([
-        ('text',TfidfVectorizer(
-            ngram_range=(1, 2),
-            max_features=40000,
-            **tfidf_para,
-            preprocessor=get_col('text'))),
-        ('title',TfidfVectorizer(
-            max_features=20000,
-            **tfidf_para,
-            preprocessor=get_col('title'))),
-    ])
+
 
 dftrl.index = df.index
 dftrl.fillna('', inplace = True)
@@ -317,9 +309,7 @@ start_vect=time.time()
 text_cols = ['text', 'text_feat', 'title']
 vectorizer1.fit(df[text_cols].loc[traindex,:].to_dict('records'))
 text_cols = ['text', 'title']
-vectorizer2.fit(dftrl[text_cols].loc[traindex,:].to_dict('records'))
 ready_df    = vectorizer1.transform(df.to_dict('records'))
-ready_dftrl = vectorizer2.transform(dftrl.to_dict('records'))
 tfvocab1 = vectorizer1.get_feature_names()
 tfvocab2 = vectorizer2.get_feature_names()
 
