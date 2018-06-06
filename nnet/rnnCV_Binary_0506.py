@@ -6,7 +6,7 @@ import time, gc
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
-from nltk.corpus import stopwords 
+from nltk.corpus import stopwords
 from sklearn.pipeline import FeatureUnion
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
@@ -63,9 +63,9 @@ df = pd.concat([traindf,testdf],axis=0)
 df['idx'] = range(df.shape[0])
 del traindf,testdf
 gc.collect()
-print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))   
+print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
 
-df.isnull().sum() 
+df.isnull().sum()
 
 
 
@@ -111,8 +111,8 @@ print(df['fold'].value_counts())
 
 print('[{}] Text Features'.format(time.time() - start_time))
 df['text_feat'] = df.apply(lambda row: ' '.join([
-    str(row['param_1']), 
-    str(row['param_2']), 
+    str(row['param_1']),
+    str(row['param_2']),
     str(row['param_3'])]),axis=1) # Group Param Features
 for col in ['title', 'description', 'text_feat']:
     df[col] = df[col].str.lower()
@@ -130,9 +130,9 @@ def lowCtCat(col, cutoff = 20):
     var[~idx]    = 'locount'
     var.fillna('missing', inplace = True)
     return var.astype(str).values
-for col_, cut_ in [("user_id", 5), ("image_top_1", 30), ("item_seq_number", 100)]: 
+for col_, cut_ in [("user_id", 5), ("image_top_1", 30), ("item_seq_number", 100)]:
     df[col_] = lowCtCat(col_, cutoff = cut_)
-for col_, cut_ in [('param_'+str(i+1), 20) for i in range(3)]: 
+for col_, cut_ in [('param_'+str(i+1), 20) for i in range(3)]:
     df['cat_' + col_] = lowCtCat(col_, cutoff = cut_)
 
 
@@ -170,8 +170,8 @@ def tokSent(sent):
 
 def tokCol(var):
    return [tokSent(s) for s in var.tolist()]
-rgx = re.compile('[%s]' % '!"#%&()*,-./:;<=>?@[\\]^_`{|}~\t\n')  
-               
+rgx = re.compile('[%s]' % '!"#%&()*,-./:;<=>?@[\\]^_`{|}~\t\n')
+
 
 partitions = min(cpu_count(), 8) #Define as many partitions as you want
 cores=4
@@ -181,7 +181,7 @@ def parallelize(data, func):
    data = pd.concat([pd.Series(l) for l in pool.map(tokCol, data_split)]).values
    pool.close()
    pool.join()
-   return data  
+   return data
 
 for col in ['description', 'title',]:
    print('Tokenise %s'%(col))
@@ -201,7 +201,7 @@ def myTokenizerFitJit(strls, max_words, filt = True):
 
 def myTokenizerFit(strls, max_words = 25000):
     mc = myTokenizerFitJit(strls, max_words)
-    return dict((i, c+1) for (c, (i, ii)) in enumerate(mc))  
+    return dict((i, c+1) for (c, (i, ii)) in enumerate(mc))
 
 @jit
 def fit_sequence(str_, tkn_, filt = True):
@@ -217,12 +217,12 @@ def fit_sequence(str_, tkn_, filt = True):
         labels.append(tk)
     return labels
 
-print('[{}] Finished FITTING TEXT DATA...'.format(time.time() - start_time))  
+print('[{}] Finished FITTING TEXT DATA...'.format(time.time() - start_time))
 tok_raw = myTokenizerFit(df['description'].loc[traindex].values.tolist()+df['title'].loc[traindex].values.tolist(), max_words = 80000)
 print('[{}] Finished PROCESSING TEXT DATA...'.format(time.time() - start_time))
 
 df["title"]       = fit_sequence(df.title, tok_raw)
-df["description"] = fit_sequence(df.description, tok_raw)    
+df["description"] = fit_sequence(df.description, tok_raw)
 df["title"]       = [l if len(l)>0 else [0] for l in df["title"]]
 gc.collect()
 
@@ -237,42 +237,42 @@ cont_cols = [c for c in df.columns if 'cont_' in c]
 #TEST DOESNT HAVE ANY 1s
 bin_cols=[x for x in bin_cols if x!='bin_no_description']
 
-print('[{}] Finished FEATURE CREATION'.format(time.time() - start_time))  
+print('[{}] Finished FEATURE CREATION'.format(time.time() - start_time))
 
 
 
 
 def map_sort(seq1, seq2):
 	return sorted(range(len(seq1)), key=lambda x: max(len(seq1[x]),len(seq2[x])))
-    
+
 
 
 
 class Seq_generator(Sequence):
-    def __init__(self, dt, bsize, sort_vals, target_out=True):        
+    def __init__(self, dt, bsize, sort_vals, target_out=True):
         self.batch_size = bsize
         self.dt = dt.iloc[sort_vals].reset_index(drop=True)
         if target_out:
-            self.y = self.dt.deal_probability.values
+            self.y = np.ceil(self.dt.deal_probability.values)
         else:
             self.y = None
-    
+
     def get_keras_data(self, dataset):
         X = {
-            'title': pad_sequences(dataset.title, 
+            'title': pad_sequences(dataset.title,
                                   maxlen=max([len(l) for l in dataset.title]))
-            ,'description': pad_sequences(dataset.description, 
+            ,'description': pad_sequences(dataset.description,
                                   maxlen=max([len(l) for l in dataset.description]))
             }
         for col in embed_szs.keys():
             X[col] = dataset[col].values
         X['bin_vars'] = dataset[bin_cols].values
         X['cont_vars'] = dataset[cont_cols].values
-        return X   
-        
+        return X
+
     def __len__(self):
         return int(np.ceil(self.dt.shape[0]*1./self.batch_size))
-    
+
     def __getitem__(self, i):
         slc = slice(i*self.batch_size, min((i+1)*self.batch_size, self.dt.shape[0]))
         X = self.get_keras_data(self.dt.iloc[slc])
@@ -286,17 +286,17 @@ y_pred_epochs = []
 
 
 def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
-    
+
     def root_mean_squared_error(y_true, y_pred):
-        return K.sqrt(K.mean(K.square(y_pred - y_true))) 
-    
-    
+        return K.sqrt(K.mean(K.square(y_pred - y_true)))
+
+
     def mean_error(y_true, y_pred):
         return K.mean(y_true-y_pred)
-    
+
     def repeat_smart(x):
         return K.repeat(x[0], K.shape(x[1])[1])
-    
+
     class FreezePadding(Constraint):
         """Freezes the last weight to be near 0."""
         def __call__(self, w):
@@ -309,37 +309,37 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     ##Inputs
     title = Input(shape=[None], name="title")
     description = Input(shape=[None], name="description")
-    
+
     # Categorical embeddings
     emb_inputs = dict((col, Input(shape=[1], name = col))  for col in embed_szs.keys())
     emb_model  = dict((col, Embedding(col_szs[col]+1, emb_n, embeddings_regularizer=l2(l2_val))(emb_inputs[col])) for (col, emb_n) in embed_szs.items())
     fe = concatenate([(emb_) for emb_ in emb_model.values()])
     #fe = SpatialDropout1D(dr)(fe)
-    
+
     # Binary Inputs
     bin_vars = Input(shape= [len(bin_cols)], name = 'bin_vars')
     ## Continuous Inputs
     cont_vars = Input(shape= [len(cont_cols)], name = 'cont_vars')
-    
-    
+
+
 
     #Embeddings layers
     embs_text = Embedding(MAX_DSC, emb_size, embeddings_regularizer=l2(l2_val), embeddings_constraint=FreezePadding())
-    emb_dsc = embs_text(description) 
+    emb_dsc = embs_text(description)
     emb_ttl = embs_text(title)
-    
-    
+
+
 #     static_features = concatenate([Flatten()(fe)
 #                                    , bin_vars
 #                                    , cont_vars])
-    
+
 #     emb_dsc = concatenate([emb_dsc, Lambda(repeat_smart)([static_features, emb_dsc])])
 #     emb_ttl = concatenate([emb_ttl, Lambda(repeat_smart)([static_features, emb_ttl])])
-    
+
     # GRU Layer
     rnn_dsc = (CuDNNGRU(emb_size))(emb_dsc)
     rnn_ttl = (CuDNNGRU(emb_size))(emb_ttl)
-    
+
     #main layer
     main_l = concatenate([
         rnn_dsc
@@ -348,7 +348,7 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
         , bin_vars
         , cont_vars
     ])
-    
+
     main_l = Dense(256, kernel_regularizer=l2(l2_val)) (main_l)
     main_l = PReLU()(main_l)
     #main_l = BatchNormalization()(main_l)
@@ -357,19 +357,19 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     main_l = PReLU()(main_l)
     #main_l = BatchNormalization()(main_l)
     main_l = Dropout(dr/2)(main_l)
-    
+
     #output
     output = Dense(1,activation="sigmoid", kernel_regularizer=l2(l2_val)) (main_l)
-    
+
     #model
     model = Model([title, description] + [inp for inp in emb_inputs.values()] + [bin_vars] + [cont_vars], output)
     optimizer = optimizers.Adam()
-    model.compile(loss='binary_crossentropy', 
+    model.compile(loss='binary_crossentropy',
                   optimizer=optimizer, metrics=['acc'])
-    
+
     return model
 
-def train_model(dtrain, dvalid):  
+def train_model(dtrain, dvalid):
     def to_logit(ls):
         ls=np.array(ls)
         ls=np.clip(ls,.0001,.9999)
@@ -377,19 +377,19 @@ def train_model(dtrain, dvalid):
 
     def to_proba(ls):
         return 1/(1+np.exp(-ls))
-    
-    epochs = 25
+
+    epochs = 5
     batchSize = 512
     steps = (dtrain.shape[0]/batchSize+1)*epochs
     lr_init, lr_fin = 0.0014, 0.00001
     lr_decay  = (lr_init - lr_fin)/steps
 
-    bags      = 3
+    bags      = 5
     y_pred_ls = []
     train_sorted_ix = np.array(map_sort(dtrain["title"].tolist(), dtrain["description"].tolist()))
     val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
     for b in range(bags):
-        model = get_model(64, .1,.00001)
+        model = get_model(128, .3,.00001)
  #       K.set_value(model.optimizer.lr, lr_init)
  #       K.set_value(model.optimizer.decay, lr_decay)
         #model.summary()
@@ -409,11 +409,11 @@ def train_model(dtrain, dvalid):
                              Seq_generator(dvalid, batchSizeTst, val_sorted_ix, target_out=False)
                             , max_queue_size=10
                             , verbose=2)[val_sorted_ix.argsort()])
-                
+
             print ('ROC: ', metrics.roc_auc_score(np.ceil(dvalid['deal_probability']),y_pred_ls[-1].flatten()))
             print ('ROC-bag:' , metrics.roc_auc_score(np.ceil(dvalid['deal_probability']),to_proba(sum(to_logit(y_pred_ls))).flatten()))
-    
-    
+
+
     res = np.full((epochs,epochs+1),1.)
     for i in range(epochs):
         for j in range(i+1,epochs+1):
@@ -426,9 +426,9 @@ def train_model(dtrain, dvalid):
 
     for i in range(epochs):
         print(i,' ',np.argsort(res)[i,0], ':', res[i,np.argsort(res)[i,0]])
-    i=5
-    j=25
-    y_sub = to_proba(sum([sum(to_logit(y_pred_ls[i+epochs*bag:j+epochs*bag]))/len(y_pred_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags)    
+    i=0
+    j=6
+    y_sub = to_proba(sum([sum(to_logit(y_pred_ls[i+epochs*bag:j+epochs*bag]))/len(y_pred_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags)
 
     return y_sub
 
@@ -442,12 +442,12 @@ for f in range(6):
     else:
         trnidx = (df.fold!=-1) & (df.fold!=f)
         validx = (df.fold!=-1) & (df.fold==f)
-    
+
     dtrain = df[trnidx]
     dvalid = df[validx]
     df['rnn_preds'][validx] = train_model(dtrain, dvalid)
     print('RMSE:', np.sqrt(metrics.mean_squared_error( df[validx]['deal_probability'], df[validx]['rnn_preds'])))
-    
 
-    
+
+
 df[['rnn_preds']].to_csv('../sub/rnnCV_binary_0506.csv.gz', index=True, header=True, compression='gzip')
