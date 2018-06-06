@@ -378,7 +378,7 @@ def train_model(dtrain, dvalid):
     def to_proba(ls):
         return 1/(1+np.exp(-ls))
 
-    epochs = 13
+    epochs = 5
     batchSize = 512
     steps = (dtrain.shape[0]/batchSize+1)*epochs
     lr_init, lr_fin = 0.0014, 0.00001
@@ -389,7 +389,7 @@ def train_model(dtrain, dvalid):
     train_sorted_ix = np.array(map_sort(dtrain["title"].tolist(), dtrain["description"].tolist()))
     val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
     for b in range(bags):
-        model = get_model(64, .1,.00001)
+        model = get_model(128, .3,.00001)
  #       K.set_value(model.optimizer.lr, lr_init)
  #       K.set_value(model.optimizer.decay, lr_decay)
         #model.summary()
@@ -427,7 +427,7 @@ def train_model(dtrain, dvalid):
     for i in range(epochs):
         print(i,' ',np.argsort(res)[i,0], ':', res[i,np.argsort(res)[i,0]])
     i=0
-    j=12
+    j=6
     y_sub = to_proba(sum([sum(to_logit(y_pred_ls[i+epochs*bag:j+epochs*bag]))/len(y_pred_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags)
 
     return y_sub
