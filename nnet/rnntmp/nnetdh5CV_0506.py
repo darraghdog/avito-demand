@@ -71,12 +71,12 @@ else:
     validx = (traindf.activation_date>=pd.to_datetime('2017-03-27')).values
 
 print('[{}] Load Densenet image features'.format(time.time() - start_time))
-dnimgtrn = np.load(path+'../imgfeatures/densenet_pool_array_train.npy')
+dnimgtrn = np.load(path+'../features/densenet_pool_array_train.npy')
 dnimgtrn = dnimgtrn
 scaler = preprocessing.StandardScaler()
 dnimgtrn = scaler.fit_transform(dnimgtrn)
 gc.collect()
-dnimgtst = np.load(path+'../imgfeatures/densenet_pool_array_test.npy')
+dnimgtst = np.load(path+'../features/densenet_pool_array_test.npy')
 dnimgtst = scaler.transform(dnimgtst)
 gc.collect()
 
@@ -587,7 +587,8 @@ for f in range(6):
                         print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_pred.flatten()))) 
                         y_pred_trn[~trnidx] = y_pred
             gc.collect()
-    y_pred_trn.to_csv("../sub/rnndhCV_0506_trn.csv",index=True)
+    y_pred_trn.to_csv("rnndhCV_0506_trn.csv",index=True)
+    y_pred_trn.to_csv("rnndhCV_0506_trn.csv",index=True) 
     del dtrain, dtest, dnfimgtrn, dnfimgtst
     gc.collect()
 
