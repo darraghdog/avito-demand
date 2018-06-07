@@ -41,7 +41,7 @@ path = "../"
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
-# path = '/home/ubuntu/avito/data/'
+path = '/home/ubuntu/avito/data/'
 
 start_time = time.time()
 
@@ -72,11 +72,9 @@ else:
 
 print('[{}] Load Densenet image features'.format(time.time() - start_time))
 dnimgtrn = np.load(path+'../imgfeatures/densenet_pool_array_train.npy')
-dnimgval = dnimgtrn[validx]
-dnimgtrn = dnimgtrn[trnidx]
+dnimgtrn = dnimgtrn
 scaler = preprocessing.StandardScaler()
 dnimgtrn = scaler.fit_transform(dnimgtrn)
-dnimgval = scaler.transform(dnimgval)
 gc.collect()
 dnimgtst = np.load(path+'../imgfeatures/densenet_pool_array_test.npy')
 dnimgtst = scaler.transform(dnimgtst)
@@ -104,6 +102,24 @@ for t, fold in enumerate(foldls):
     df['fold'][df.activation_date.isin(fold)] = t
 df['fold'].value_counts()
 df.head()
+
+'''
+print('SHAPES....')
+print(dnimgtrn.shape)
+print(trnidx.shape)
+
+print(dnimgtst.shape)
+print(tstidx.shape)
+
+
+print(dnimgval.shape)
+print(validx.shape)
+f = 0
+print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
+trnidx = (df['fold'].loc[traindex] != f).values
+dnfimgtrn = dnimgtrn[trnidx]
+'''
+
 
 '''
 print('[{}] Load engineered user features'.format(time.time() - start_time))
@@ -173,7 +189,7 @@ gc.collect()
 
 print('[{}] Missing values'.format(time.time() - start_time))
 for col in ['param_1', 'param_2', 'param_3', 'description', 'price', 'image']:
-    df["bin_no_" + col] = (df[col].isna()).astype(np.int32)
+    df["bin_no_" + col] = (df[col]!=df[col]).astype(np.int32)  #(df[col].isna()).astype(np.int32)
 cols = [c for c in df.columns if 'bin_no_' in c]
 df[cols].head()
 
@@ -551,7 +567,7 @@ for f in range(6):
                                 Seq_generator(dtrain, dnfimgtrn, batchSize, train_sorted_ix)
                                 , epochs=i+1
                                 , max_queue_size=15
-                                , verbose=1
+                                , verbose=2
                                 , initial_epoch=i
                                 , use_multiprocessing=True
                                 , workers=3
@@ -571,6 +587,7 @@ for f in range(6):
                         print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_pred.flatten()))) 
                         y_pred_trn[~trnidx] = y_pred
             gc.collect()
+    y_pred_trn.to_csv("../sub/rnndhCV_0506_trn.csv",index=True)
     del dtrain, dtest, dnfimgtrn, dnfimgtst
     gc.collect()
 
