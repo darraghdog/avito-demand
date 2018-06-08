@@ -578,7 +578,7 @@ for f in range(5, 6):
                                 , max_queue_size=10
                                 , verbose=2)[tst_sorted_ix.argsort()])
                 if f == 5:
-                    if len(y_pred_ls)>1:
+                    if len(y_sub_ls)>1:
                         y_pred_tst[:] = sum(y_sub_ls)/len(y_sub_ls)
                 else:
                     print('RMSE:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_sub_ls[-1].flatten())))

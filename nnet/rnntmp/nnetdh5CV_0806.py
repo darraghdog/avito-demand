@@ -41,7 +41,7 @@ path = "../"
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
-#path = '/home/ubuntu/avito/data/'
+path = '/home/ubuntu/avito/data/'
 
 start_time = time.time()
 
@@ -587,7 +587,7 @@ for f in range(6):
                                 , max_queue_size=10
                                 , verbose=2)[tst_sorted_ix.argsort()])
                 if f == 5:
-                    if len(y_pred_ls)>1:
+                    if len(y_sub_ls)>1:
                         y_pred_tst[:] = sum(y_sub_ls)/len(y_sub_ls)
                 else:
                     print('RMSE:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_sub_ls[-1].flatten())))
@@ -607,7 +607,7 @@ rnnsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
 rnnsub.set_index('item_id', inplace = True)
 print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, rnnsub.loc[traindex])))
 # RMSE for all : 0.2168
-rnnsub.to_csv("../sub/rnndhCV_0806.csv.gz",index=True,header=True, compression = 'gzip')
+rnnsub.to_csv("rnndhCV_0806.csv.gz",index=True,header=True, compression = 'gzip')
 
 
 
