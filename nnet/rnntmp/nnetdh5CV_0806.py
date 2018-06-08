@@ -9,7 +9,7 @@ from sklearn import preprocessing
 from nltk.corpus import stopwords
 from sklearn.pipeline import FeatureUnion
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from sklearn.preprocessing import FunctionTransformer, StandardScaler, MinMaxScaler
+from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from scipy.sparse import hstack, csr_matrix
 from sklearn.model_selection import train_test_split
 import plotly.offline as plt
@@ -41,12 +41,13 @@ path = "../"
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
-# path = '/home/ubuntu/avito/data/'
+#path = '/home/ubuntu/avito/data/'
 
 start_time = time.time()
 
 validation = False
-full       = False
+full       = True
+CV   = True
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
@@ -71,11 +72,9 @@ else:
 
 print('[{}] Load Densenet image features'.format(time.time() - start_time))
 dnimgtrn = np.load(path+'../imgfeatures/densenet_pool_array_train.npy')
-dnimgval = dnimgtrn[validx]
-dnimgtrn = dnimgtrn[trnidx]
+dnimgtrn = dnimgtrn
 scaler = preprocessing.StandardScaler()
 dnimgtrn = scaler.fit_transform(dnimgtrn)
-dnimgval = scaler.transform(dnimgval)
 gc.collect()
 dnimgtst = np.load(path+'../imgfeatures/densenet_pool_array_test.npy')
 dnimgtst = scaler.transform(dnimgtst)
@@ -88,6 +87,39 @@ df['idx'] = range(df.shape[0])
 del traindf,testdf
 gc.collect()
 print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
+
+print('[{}] Create folds'.format(time.time() - start_time))
+foldls = [["2017-03-15", "2017-03-16", "2017-03-17"], \
+       ["2017-03-18", "2017-03-19", "2017-03-20"], \
+       ["2017-03-21", "2017-03-22", "2017-03-23"], \
+       ["2017-03-24", "2017-03-25", "2017-03-26"], \
+        ["2017-03-27", "2017-03-28", "2017-03-29", \
+            "2017-03-30", "2017-03-31", "2017-04-01", \
+            "2017-04-02", "2017-04-03","2017-04-07"]]
+foldls = [[pd.to_datetime(d) for d in f] for f in foldls]
+df['fold'] = -1
+for t, fold in enumerate(foldls):
+    df['fold'][df.activation_date.isin(fold)] = t
+df['fold'].value_counts()
+df.head()
+
+'''
+print('SHAPES....')
+print(dnimgtrn.shape)
+print(trnidx.shape)
+
+print(dnimgtst.shape)
+print(tstidx.shape)
+
+
+print(dnimgval.shape)
+print(validx.shape)
+f = 0
+print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
+trnidx = (df['fold'].loc[traindex] != f).values
+dnfimgtrn = dnimgtrn[trnidx]
+'''
+
 
 '''
 print('[{}] Load engineered user features'.format(time.time() - start_time))
@@ -122,22 +154,9 @@ df.head()
 
 df.sort_values('idx', inplace = True)
 
-print('[{}] Load meta image engineered features'.format(time.time() - start_time))
-featimgmeta = pd.concat([pd.read_csv(path + '../features/img_features_%s.csv.gz'%(i)) for i in range(6)])
-featimgmeta.rename(columns = {'name':'image'}, inplace = True)
-featimgmeta['image'] = featimgmeta['image'].str.replace('.jpg', '')
-featimgmeta['whiteness'] = np.log1p(featimgmeta['whiteness'])
-featimgmeta['dullness'] = pd.Series(np.log1p(abs(100-featimgmeta['dullness'])))
-scl = MinMaxScaler()
-
-for col in [c for c in featimgmeta.columns if c!= 'image']:
-    featimgmeta[col] = scl.fit_transform(featimgmeta[col].values.reshape(-1, 1)).flatten()
-    featimgmeta.rename(columns = {col: col+'_cont'}, inplace = True)
-df = df.reset_index('item_id').merge(featimgmeta, on = ['image'], how = 'left').set_index('item_id')
-df.sort_values('idx', inplace = True)
-
 
 print('[{}] Load engineered price ratio features'.format(time.time() - start_time))
+
 featrdgprc = pd.read_csv(path + '../features/price_category_ratios.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 for col in featrdgprc.columns:
     featrdgprc[col].fillna(featrdgprc[col].median(), inplace = True)
@@ -170,7 +189,7 @@ gc.collect()
 
 print('[{}] Missing values'.format(time.time() - start_time))
 for col in ['param_1', 'param_2', 'param_3', 'description', 'price', 'image']:
-    df["bin_no_" + col] = (df[col].isna()).astype(np.int32)
+    df["bin_no_" + col] = (df[col]!=df[col]).astype(np.int32)  #(df[col].isna()).astype(np.int32)
 cols = [c for c in df.columns if 'bin_no_' in c]
 df[cols].head()
 
@@ -191,6 +210,16 @@ df["emb_weekday"] = df['activation_date'].dt.weekday
 #df["cont_week_of_year"] = df['activation_date'].dt.week    <- Too different between train and test
 df.drop(["activation_date","image"],axis=1,inplace=True)
 
+
+print('[{}] Load translated image engineered features'.format(time.time() - start_time))
+dftrl = pd.concat([pd.read_csv(path + '../features/translate_trn_en.csv.gz', compression = 'gzip'),
+                        pd.read_csv(path + '../features/translate_tst_en.csv.gz', compression = 'gzip')])
+dftrl.fillna('', inplace = True)
+dftrl.rename(columns = dict((c, c.replace('_translated', '')) for c in dftrl.columns), inplace = True)
+dftrl.head()
+gc.collect()
+
+
 print('[{}] Text Features'.format(time.time() - start_time))
 def expand_description(df_, category = True):
     df_['text_feat'] = df_.apply(lambda row: ' '.join([
@@ -209,7 +238,7 @@ def expand_description(df_, category = True):
         df_.drop(['param_1', 'param_2', 'param_3', 'text_feat'], axis = 1, inplace = True)
     return df_
 df =  expand_description(df)
-# dftrl =  expand_description(dftrl, category = False)
+dftrl =  expand_description(dftrl)
 
 print('[{}] Categoricals with some low counts'.format(time.time() - start_time))
 def lowCtCat(col, cutoff = 20):
@@ -275,6 +304,7 @@ def parallelize(data, func):
 
 for col in ['description', 'title',]:
    print('Tokenise %s'%(col))
+   dftrl[col] = parallelize(dftrl[col], tokCol)
    df[col] = parallelize(df[col], tokCol)
    # dftrl[col] = parallelize(dftrl[col], tokCol)
 print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
@@ -308,20 +338,30 @@ def fit_sequence(str_, tkn_, filt = True):
         labels.append(tk)
     return labels
 
+
+
+df["title_translated"]       = dftrl["title"].values     
+df["description_translated"] = dftrl["description"] .values
+cols = ['title', 'description', 'title_translated', 'description_translated']
+df[cols].head()
+del dftrl
+gc.collect()
+
 print('[{}] Finished FITTING TEXT DATA...'.format(time.time() - start_time))
 tok_raw = myTokenizerFit(df['description'].loc[traindex].values.tolist()+ \
-                         df['title'].loc[traindex].values.tolist(), max_words = 80000)
-                         #dftrl['title'].loc[traindex].values.tolist()+ \
-                         #dftrl['description'].loc[traindex].values.tolist(), max_words = 80000)
+                         df['title'].loc[traindex].values.tolist()+ \
+                         df['title_translated'].loc[traindex].values.tolist()+ \
+                         df['description_translated'].loc[traindex].values.tolist(), max_words = 100000)
 print('[{}] Finished PROCESSING TEXT DATA...'.format(time.time() - start_time))
 df["title"]       = fit_sequence(df.title, tok_raw)
 df["description"] = fit_sequence(df.description, tok_raw)
-#df["title_translated"]       = fit_sequence(dftrl.title, tok_raw)
-#df["description_translated"] = fit_sequence(dftrl.description, tok_raw)
+df["title_translated"]       = fit_sequence(df.title_translated, tok_raw)
+df["description_translated"] = fit_sequence(df.description_translated, tok_raw)
 df["title"]       = [l if len(l)>0 else [0] for l in df["title"]]
 gc.collect()
 #del dftrl
 gc.collect()
+df.head()
 
 
 MAX_DSC = max(tok_raw.values())+1
@@ -339,7 +379,6 @@ bin_cols=[x for x in bin_cols if x!='bin_no_description']
 print('[{}] Finished FEATURE CREATION'.format(time.time() - start_time))
 
 
-
 def map_sort(seq1, seq2):
 	return sorted(range(len(seq1)), key=lambda x: max(len(seq1[x]),len(seq2[x])))
 
@@ -355,16 +394,20 @@ class Seq_generator(Sequence):
             self.y = None
 
     def get_keras_data(self, dataset, dndataset):
-        X = {
-            'title': pad_sequences(dataset.title,
-                                  maxlen=max([len(l) for l in dataset.title]))
-            ,'description': pad_sequences(dataset.description,
-                                  maxlen=max([len(l) for l in dataset.description]))
-            #,'title_translated': pad_sequences(dataset.title_translated,
-            #                      maxlen=max([len(l) for l in dataset.title_translated]))
-            #,'description_translated': pad_sequences(dataset.description_translated,
-            #                      maxlen=max([len(l) for l in dataset.description_translated]))
-            }
+        if random.randint(0, 1)==0:
+            X = {
+                'title': pad_sequences(dataset.title_translated,
+                                      maxlen=max([len(l) for l in dataset.title_translated]))
+                ,'description': pad_sequences(dataset.description_translated,
+                                      maxlen=max([len(l) for l in dataset.description_translated]))
+                }
+        else:
+            X = {
+                'title': pad_sequences(dataset.title,
+                                      maxlen=max([len(l) for l in dataset.title]))
+                ,'description': pad_sequences(dataset.description,
+                                      maxlen=max([len(l) for l in dataset.description]))
+                }
         for col in embed_szs.keys():
             X[col] = dataset[col].values
         X['bin_vars'] = dataset[bin_cols].values
@@ -382,21 +425,20 @@ class Seq_generator(Sequence):
             return (X, self.y[slc])
         return X
 
-
+'''
 dtrain = df.loc[traindex,:][trnidx].reset_index()
 dvalid = df.loc[traindex,:][validx].reset_index()
 dtest  = df.loc[testdex,:].reset_index()
 dtrain['target'] = y[trnidx].values
 dvalid['target'] = y[validx].values
 
-dtrain.columns
 
 train_sorted_ix = np.array(map_sort(dtrain["title"].tolist(), dtrain["description"].tolist()))
 val_sorted_ix = np.array(map_sort(dvalid["title"].tolist(), dvalid["description"].tolist()))
 tst_sorted_ix = np.array(map_sort(dtest ["title"].tolist(), dtest ["description"].tolist()))
 
 y_pred_epochs = []
-
+'''
 
 def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
 
@@ -443,23 +485,15 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     embs_text = Embedding(MAX_DSC, emb_size, embeddings_regularizer=l2(l2_val), embeddings_constraint=FreezePadding())
     emb_dsc = embs_text(description)
     emb_ttl = embs_text(title)    
-    #emb_dsct = embs_text(description_translated)
-    #emb_ttlt = embs_text(title_translated)
 
     # GRU Layer
     rnn_dsc = (CuDNNGRU(emb_size))(emb_dsc)
     rnn_ttl = (CuDNNGRU(emb_size)) (emb_ttl)
-    #rnn_dsct = (CuDNNGRU(emb_size))(emb_dsct)
-    #rnn_ttlt = (CuDNNGRU(emb_size)) (emb_ttlt)
-    #rnn_dsc = (GRU(emb_size))(emb_dsc)
-    #rnn_ttl = (GRU(emb_size)) (emb_ttl)
 
     #main layer
     main_l = concatenate([
         rnn_dsc
         , rnn_ttl
-        #, rnn_dsct
-        #, rnn_ttlt
         , Flatten()(fe)
         , bin_vars
         , cont_vars
@@ -469,12 +503,8 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     main_l = Dense(256, kernel_regularizer=l2(l2_val)) (main_l)
     main_l = PReLU()(main_l)
     main_l = Dropout(dr)(main_l)
-    main_l = Dense(256, kernel_regularizer=l2(l2_val)) (main_l)
-    main_l = PReLU()(main_l)
-    main_l = Dropout(dr)(main_l)
     main_l = Dense(32, kernel_regularizer=l2(l2_val)) (main_l)
     main_l = PReLU()(main_l)
-    #main_l = BatchNormalization()(main_l)
     main_l = Dropout(dr/2)(main_l)
 
     #output
@@ -483,8 +513,6 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     #model
     model = Model([title, description] + \
                   [inp for inp in emb_inputs.values()] + [bin_vars] + [cont_vars] + [img_layer], output)
-                    # , title_translated, description_translated
-    #optimizer = optimizers.Adam(clipnorm=10)
     optimizer = optimizers.Adam(clipvalue=0.5)
     model.compile(loss=root_mean_squared_error,
                   optimizer=optimizer, metrics=['mae'])
@@ -492,52 +520,8 @@ def get_model(emb_size = 32, dr = 0.1, l2_val = 0.0001):
     return model
 
 gc.collect()
-# https://github.com/keras-team/keras/issues/1370
-#norm = math.sqrt(sum(np.sum(K.get_value(w)) for w in model.optimizer.weights))
-
-epochs = 28
-batchSize = 512
-steps = (dtrain.shape[0]/batchSize+1)*epochs
-lr_init, lr_fin = 0.0014, 0.00001
-lr_decay  = (lr_init - lr_fin)/steps
 
 
-bags      = 3
-y_pred_ls = []
-y_sub_ls  = []
-for b in range(bags):
-    gc.collect()
-    model = get_model(128, .1,.00001)
-    #model = get_model(64, .1,.00001)
-    K.set_value(model.optimizer.lr, lr_init)
-    K.set_value(model.optimizer.decay, lr_decay)
-    #model.summary()
-    for i in range(epochs):
-        batchSize = min(512*(2**i),512)
-        batchSizeTst = 256
-        model.fit_generator(
-                            Seq_generator(dtrain, dnimgtrn, batchSize, train_sorted_ix)
-                            , epochs=i+1
-                            , max_queue_size=15
-                            , verbose=1
-                            , initial_epoch=i
-                            , use_multiprocessing=True
-                            , workers=3
-                            )
-        y_pred_ls.append(model.predict_generator(
-                         Seq_generator(dvalid, dnimgval, batchSizeTst, val_sorted_ix, target_out=False)
-                        , max_queue_size=10
-                        , verbose=2)[val_sorted_ix.argsort()])
-        y_sub_ls.append(model.predict_generator(
-                        Seq_generator(dtest, dnimgtst, batchSizeTst, tst_sorted_ix, target_out=False)
-                        , max_queue_size=10
-                        , verbose=2)[tst_sorted_ix.argsort()])
-        print('RMSE:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred_ls[-1].flatten())))
-        if len(y_pred_ls)>1:
-            y_pred = sum(y_pred_ls)/len(y_pred_ls)
-            print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dvalid['target'], y_pred.flatten())))    
-    del model
-    gc.collect()
         
 def to_logit(ls):
     ls=np.array(ls)
@@ -546,29 +530,99 @@ def to_logit(ls):
 
 def to_proba(ls):
     return 1/(1+np.exp(-ls))
-'''
-res = np.full((epochs,epochs+1),1.)
-for i in range(epochs):
-    for j in range(i+1,epochs+1):
-        preds = sum([sum(to_logit(y_pred_ls[i+epochs*bag:j+epochs*bag]))/len(y_pred_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags
-        res[i,j] = np.sqrt(metrics.mean_squared_error(dvalid['target'], to_proba(preds.flatten())))
 
-        if res[i, j]<0.2134:
-            print(i,' to ',j, 'RMSE bags:', res[i,j])
-# 4  to  28 RMSE bags: 0.21356346841391569
-# 4  to  28 RMSE bags: 0.21333529264681272
+# Placeholder for predictions
+df['fold'].value_counts()
+y_pred_trn = pd.Series(-np.zeros(df.loc[traindex,:].shape[0]), index = traindex)
+y_pred_tst = pd.Series(-np.zeros(df.loc[testdex ,:].shape[0]), index = testdex)
+for f in range(6):
+    print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
+    trnidx = (df['fold'].loc[traindex] != f).values
+    dtrain = df.loc[traindex,:][trnidx].reset_index()
+    dtrain['target'] = y[trnidx].values
+    dnfimgtrn = dnimgtrn[trnidx]
+    # 5 is the test fold
+    if f == 5:
+        dtest  = df.loc[testdex,:].reset_index()
+        dnfimgtst = dnimgtst
+    else:
+        dtest  = df.loc[traindex,:][~trnidx].reset_index()
+        dnfimgtst = dnimgtrn[~trnidx]
+        dtest['target'] = y[~trnidx].values
+    
+    train_sorted_ix = np.array(map_sort(dtrain["title"].tolist(), dtrain["description"].tolist()))
+    tst_sorted_ix = np.array(map_sort(dtest ["title"].tolist(), dtest ["description"].tolist()))
+    
+    y_pred_epochs = []
+    epochs = 28
+    batchSize = 512
+    steps = (dtrain.shape[0]/batchSize+1)*epochs
+    lr_init, lr_fin = 0.0014, 0.00001
+    lr_decay  = (lr_init - lr_fin)/steps
 
-for i in range(epochs):
-    print(i,' ',np.argsort(res)[i,0], ':', res[i,np.argsort(res)[i,0]])
-'''
-i=4
-j=28
-y_sub = sum([sum(to_logit(y_sub_ls[i+epochs*bag:j+epochs*bag]))/len(y_sub_ls[i+epochs*bag:j+epochs*bag]) for bag in range(bags)])/bags
-rnnsub = pd.DataFrame(to_proba(y_sub),columns=["deal_probability"],index=testdex)
-rnnsub['deal_probability'] = rnnsub['deal_probability'] # Between 0 and 1
-rnnsub.to_csv(path+"../sub/rnndhsub_0506_val.csv.gz",index=True,header=True, compression = 'gzip')
-# print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
-# print("Notebook Runtime: %0.2f Minutes"%((time.time() - notebookstart)/60))
+
+    bags      = 3
+    y_pred_ls = []
+    y_sub_ls  = []
+    for b in range(bags):
+        model = get_model(128, .1,.00001)
+        K.set_value(model.optimizer.lr, lr_init)
+        K.set_value(model.optimizer.decay, lr_decay)
+        #model.summary()
+        for i in range(epochs):
+            batchSize = min(512*(2**i),512)
+            batchSizeTst = 256
+            history = model.fit_generator(
+                                Seq_generator(dtrain, dnfimgtrn, batchSize, train_sorted_ix)
+                                , epochs=i+1
+                                , max_queue_size=15
+                                , verbose=2
+                                , initial_epoch=i
+                                , use_multiprocessing=True
+                                , workers=3
+                                )
+            if i>3:
+                y_sub_ls.append(model.predict_generator(
+                                Seq_generator(dtest, dnfimgtst, batchSizeTst, tst_sorted_ix, target_out=False)
+                                , max_queue_size=10
+                                , verbose=2)[tst_sorted_ix.argsort()])
+                if f == 5:
+                    if len(y_pred_ls)>1:
+                        y_pred_tst[:] = sum(y_sub_ls)/len(y_sub_ls)
+                else:
+                    print('RMSE:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_sub_ls[-1].flatten())))
+                    if len(y_sub_ls)>1:
+                        y_pred = sum(y_sub_ls)/len(y_sub_ls)
+                        print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_pred.flatten()))) 
+                        y_pred_trn[~trnidx] = y_pred
+            gc.collect()
+    y_pred_trn.to_csv("rnndhCV_0806_trn.csv",index=True)
+    y_pred_tst.to_csv("rnndhCV_0806_tst.csv",index=True) 
+    del dtrain, dtest, dnfimgtrn, dnfimgtst
+    gc.collect()
+
+rnnsub = pd.concat([y_pred_trn, y_pred_tst]).reset_index()
+rnnsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
+#rnnsub['deal_probability'] = rnnsub['deal_probability'].clip(0.0, 1.0)
+rnnsub.set_index('item_id', inplace = True)
+print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, rnnsub.loc[traindex])))
+# RMSE for all : 0.2168
+rnnsub.to_csv("../sub/rnndhCV_0806.csv.gz",index=True,header=True, compression = 'gzip')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 '''
 
