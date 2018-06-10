@@ -99,7 +99,10 @@ featrdgimg = pd.read_csv(path + '../features/ridgeImg5CV.csv.gz', compression = 
 featrdgprc = pd.read_csv(path + '../features/price_seq_category_ratios.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featrdgprc.fillna(-1, inplace = True)
 featrdgrnk = pd.read_csv(path + '../features/price_rank_ratios0906.gz', compression = 'gzip') # created with R script and stemmer
+featrdgrnk.isnull().sum()
 featnumf = pd.read_csv(path + '../features/numericFeats.gz', compression = 'gzip') 
+featnumf.fillna(0, inplace = True)
+
 featprmenc = pd.read_csv(path + '../features/alldf_bayes_mean_param_1006.gz', compression = 'gzip') 
 featprmtro = pd.read_csv(path + '../features/price_param_ratios1006.gz', compression = 'gzip') 
 
