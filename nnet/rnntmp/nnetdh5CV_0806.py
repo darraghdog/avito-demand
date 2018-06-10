@@ -535,7 +535,7 @@ def to_proba(ls):
 df['fold'].value_counts()
 y_pred_trn = pd.Series(-np.zeros(df.loc[traindex,:].shape[0]), index = traindex)
 y_pred_tst = pd.Series(-np.zeros(df.loc[testdex ,:].shape[0]), index = testdex)
-for f in range(6):
+for f in range(5, 6):
     print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
     trnidx = (df['fold'].loc[traindex] != f).values
     dtrain = df.loc[traindex,:][trnidx].reset_index()
@@ -588,7 +588,8 @@ for f in range(6):
                                 , verbose=2)[tst_sorted_ix.argsort()])
                 if f == 5:
                     if len(y_sub_ls)>1:
-                        y_pred_tst[:] = sum(y_sub_ls)/len(y_sub_ls)
+                        y_pred_tst = pd.Series(sum(y_sub_ls)/len(y_sub_ls), index = testdex)
+                        print(y_pred_tst.head())
                 else:
                     print('RMSE:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_sub_ls[-1].flatten())))
                     if len(y_sub_ls)>1:
@@ -596,7 +597,7 @@ for f in range(6):
                         print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_pred.flatten()))) 
                         y_pred_trn[~trnidx] = y_pred
             gc.collect()
-    y_pred_trn.to_csv("rnndhCV_0806_trn.csv",index=True)
+    #y_pred_trn.to_csv("rnndhCV_0806_trn.csv",index=True)
     y_pred_tst.to_csv("rnndhCV_0806_tst.csv",index=True) 
     del dtrain, dtest, dnfimgtrn, dnfimgtst
     gc.collect()
