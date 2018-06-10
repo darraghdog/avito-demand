@@ -236,7 +236,7 @@ def parallelize(data, func):
     pool.join()
     return data
 
-load_text = False
+load_text = True
 text_cols = ['description', 'text', 'text_feat', 'title', 'translation']
 if load_text:
     dftxt = pd.read_csv(path + '../features/text_features_morphed.csv.gz', compression = 'gzip')
