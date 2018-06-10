@@ -23,7 +23,7 @@ from multiprocessing import cpu_count, Pool
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
-#path = '/home/ubuntu/avito/data/'
+path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = False
 
@@ -100,6 +100,7 @@ featrdgrnk.isnull().sum()
 featimgprc = pd.read_csv(path + '../features/price_imagetop1_ratios.gz', compression = 'gzip') # created with features/make/priceImgRatios2705.R
 featenc = pd.read_csv(path + '../features/alldf_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featnumf = pd.read_csv(path + '../features/numericFeats.gz', compression = 'gzip') 
+featnumf.fillna(0, inplace = True)
 featct  = pd.read_csv(path + '../features/alldf_count.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featusrttl.rename(columns={'title': 'all_titles'}, inplace = True)
 df = df.reset_index().merge(featpop, on = 'city', how = 'left')
@@ -362,7 +363,7 @@ else:
 f, ax = plt.subplots(figsize=[7,10])
 lgb.plot_importance(lgb_clf, max_num_features=50, ax=ax)
 plt.title("Light GBM Feature Importance")
-plt.savefig(path + '../plots/feature_import_0206A.png')
+plt.savefig(path + '../plots/feature_import_1006.png')
 
 print("Model Evaluation Stage")
 print('RMSE:', np.sqrt(metrics.mean_squared_error(y_valid, lgb_clf.predict(X_valid))))
