@@ -2,6 +2,7 @@
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
+lgb_1006      0.2120             0.2153             ??????          Add param features                    
 lgb_0906      0.2123             0.2158             ??????          Add price ranking reatures
 lgb_0206      0.2132             0.2162             ??????          Add title translation as col and tfidf it
 lgb_3105      0.2134             0.2168             0.2190          Meta image features
@@ -41,6 +42,7 @@ mlp_1605B     ????               ??????             0.2208          Weighted avg
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
+L1GBM_1006A   ??????             ?????              0.2161          Add param features
 L1GBM_1006    ??????             ?????              0.2163          Add price ranking
 L1GBM_0406A   ??????             ?????              0.2166          fixed lgb bug at L1, hash 'text' instead of description
 L1GBM_0306A   ??????             ?????              0.2167          Included title translation LGB 
