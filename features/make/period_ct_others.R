@@ -26,13 +26,12 @@ date2num = function(df, col){
 tstpdf <- data.table(read_csv(paste0(path, "periods_test.csv")))
 tstpdf = date2num(tstpdf, 'date_to')
 tstpdf = date2num(tstpdf, 'date_from')
-tstdf[, activation_date:= NULL]
+tstpdf[, activation_date:= NULL]
 setkeyv(tstpdf, c('item_id'))
-setnames(tstpdf, 'activation_date', 'activation_date_period')
 gc();gc()
 
 # Load active file
-keepcols = c("item_id", 'activation_date', "category_name", "price",  'region', 'city', 'param_1', 'param_2', 'param_3')
+keepcols = c("item_id", 'activation_date', "category_name", "price",  'region', 'city', 'title')
 tstadf = data.table(read_csv(paste0(path, 'test_active.csv')))
 tstadf= date2num(tstadf, 'activation_date')
 tstadf = tstadf[,keepcols,with=F]
@@ -41,7 +40,42 @@ gc(); gc()
 gc(); gc()
 
 # Join periods and active file
-tstdf = merge(tstadf, tstpdf, by = 'item_id', all.x = T, all.y = F)
+tstadf = merge(tstadf, tstpdf, by = 'item_id', all.x = T, all.y = F)
+
+# Load base file
+keepcols = c("item_id", 'activation_date', "category_name", "price",  'region', 'city', 'title')
+tstdf = data.table(read_csv(paste0(path, 'test.csv')))
+tstdf= date2num(tstdf, 'activation_date')
+tstdf = tstdf[,keepcols,with=F]
+setkeyv(tstdf, c('item_id'))
+gc(); gc()
+gc(); gc()
+
+
+# Now try and match up for each date
+dts = unique(tstdf$activation_date)
+d = dts[1]
+d
+
+dtls = list()
+
+i = 0 
+for (d in dts){
+  print(d); i = i + 1
+  a = tstadf[(date_to>=d) & (date_from<=d), .N, by = .(category_name, price, region, city, title)]
+  a[, activation_date:= d]
+  a = merge(a, tstdf, by = c("category_name", "price", "region", "city", "title", "activation_date"), all.x = F, all.y = F)
+  dtls[[i]] = a
+  gc(); gc()
+}
+
+dt = rbindlist(dtls)
+table(dt$N)
+
+
+table(tstadf$title %in% tstdf$title)
+
+
 
 
 # Load up train/test and active files and join them all together, keeping the position of train/test
