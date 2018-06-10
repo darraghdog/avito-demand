@@ -99,6 +99,7 @@ featrdgrnk = pd.read_csv(path + '../features/price_rank_ratios0906.gz', compress
 featrdgrnk.isnull().sum()
 featimgprc = pd.read_csv(path + '../features/price_imagetop1_ratios.gz', compression = 'gzip') # created with features/make/priceImgRatios2705.R
 featenc = pd.read_csv(path + '../features/alldf_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+featcar = pd.read_csv(path + '../features/carYearBrand.gz', compression = 'gzip') 
 featct  = pd.read_csv(path + '../features/alldf_count.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featusrttl.rename(columns={'title': 'all_titles'}, inplace = True)
 df = df.reset_index().merge(featpop, on = 'city', how = 'left')
@@ -120,7 +121,7 @@ df.sort_values('idx', inplace = True)
 df.drop(['idx'], axis=1,inplace=True)
 df.reset_index(inplace = True)
 df.head()
-df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc, featrdgrnk],axis=1)
+df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc, featrdgrnk, featcar],axis=1)
 #df['ridge_txt'] = featrdgtxt['ridge_preds'].values
 #df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
 df['ridge_img'] = featrdgimg['ridge_img_preds'].values
@@ -372,28 +373,7 @@ lgsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
 print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 
 
-'''
-[20]    train's rmse: 0.241017  valid's rmse: 0.238619
-[40]    train's rmse: 0.230407  valid's rmse: 0.228328
-[60]    train's rmse: 0.224764  valid's rmse: 0.223036
-[80]    train's rmse: 0.221182  valid's rmse: 0.219858
-[100]   train's rmse: 0.218999  valid's rmse: 0.218109
-[120]   train's rmse: 0.21751   valid's rmse: 0.217007
-[140]   train's rmse: 0.216367  valid's rmse: 0.216286
-[160]   train's rmse: 0.215435  valid's rmse: 0.215784
-[180]   train's rmse: 0.214654  valid's rmse: 0.215431
-[200]   train's rmse: 0.213959  valid's rmse: 0.215173
-[220]   train's rmse: 0.213324  valid's rmse: 0.214944
-[240]   train's rmse: 0.212721  valid's rmse: 0.214729
-[260]   train's rmse: 0.212156  valid's rmse: 0.21458
-[280]   train's rmse: 0.211626  valid's rmse: 0.214469
-[300]   train's rmse: 0.21111   valid's rmse: 0.214347
-[320]   train's rmse: 0.210609  valid's rmse: 0.214229
-[340]   train's rmse: 0.210126  valid's rmse: 0.214118
-[360]   train's rmse: 0.209656  valid's rmse: 0.214027
-[380]   train's rmse: 0.209197  valid's rmse: 0.213929
-[400]   train's rmse: 0.208738  valid's rmse: 0.213835
-'''
+
 '''
 
 [20]    train's rmse: 0.240974  valid's rmse: 0.238612
