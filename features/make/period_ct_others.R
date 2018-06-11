@@ -77,7 +77,10 @@ get_same_day_prices = function(fstr, join_cols){
 keepcols = c("item_id", 'activation_date', "category_name", "price",  'region', 'city', 'param_1', 'param_2', 'param_3', 'title')
 join_cols = c("category_name", "price", "region", "city", "title")
 tstmap = get_same_day_prices('test', join_cols)
+tstmap = unique(tstmap)
 trnmap = get_same_day_prices('train', join_cols)
+trnmap = unique(trnmap)
+#tstmap[title=='LADA Granta, 2017' & city =='Екатеринбург'][order(activation_date)]
 
 # Join train
 trndf = data.table(read_csv(paste0(path, 'train.csv'), col_types = list('description' = col_skip(), 'user_id' = col_skip())))
@@ -86,6 +89,9 @@ trndf = date2num(trndf, 'activation_date')
 trndf = trndf[,c(keepcols, 'index'),with=F]
 trndf = merge(trndf, trnmap, by = c(setdiff(join_cols, 'price'), 'activation_date'), all.x = T, all.y = F)
 trndf = trndf[order(index)]
+trndf[, other_mean_price_price := other_mean_price/price]
+trndf[, other_min_price_comp := as.integer(price>other_min_price)+1]
+trndf[, other_max_price_comp := as.integer(price>other_max_price)+1]
 
 # Join test
 tstdf = data.table(read_csv(paste0(path, 'test.csv'), col_types = list('description' = col_skip(), 'user_id' = col_skip())))
@@ -94,9 +100,22 @@ tstdf = date2num(tstdf, 'activation_date')
 tstdf = tstdf[,c(keepcols, 'index'),with=F]
 tstdf = merge(tstdf, tstmap, by = c(setdiff(join_cols, 'price'), 'activation_date'), all.x = T, all.y = F)
 tstdf = tstdf[order(index)]
+tstdf[, other_mean_price_price := other_mean_price/price]
+tstdf[, other_min_price_comp := as.integer(price>other_min_price)+1]
+tstdf[, other_max_price_comp := as.integer(price>other_max_price)+1]
+
+
 
 # Make other data table
+keepfeats = c('other_count', 'other_mean_price_price', 'other_min_price_comp', 'other_max_price_comp')
+outdf = rbind(trndf[,keepfeats, with=F], tstdf[,keepfeats, with=F])
+outdf[is.na(outdf)] = 0
 
+idxtrn = 1:nrow(trndf)
+idxtst = setdiff(idxtrn, 1:nrow(tstdf))
+
+hist(outdf[idxtrn]$other_max_price_comp)
+hist(outdf[idxtst]$other_max_price_comp)
 
 # Write out the files
 writeme = function(df, name){
@@ -104,72 +123,6 @@ writeme = function(df, name){
             gzfile(paste0(path, '../features/', name,'.gz')), 
             row.names = F, quote = F)
 }
-writeme(tstmap, 'tstmap1')
-writeme(trnmap, 'trnmap1')
-
-
-tstmap[other_count>500]
-
-
-table(tstadf$title %in% tstdf$title)
-
-
-
-
-# Load up train/test and active files and join them all together, keeping the position of train/test
-keepcols = c("item_id", 'activation_date', "category_name", "price",  'region', 'city', 'param_1', 'param_2', 'param_3')
-trndf = data.table(read_csv(paste0(path, 'train.csv')))
-trndf = trndf[,keepcols,with=F]
-gc(); gc()
-gc(); gc()
-trnadf = data.table(read_csv(paste0(path, 'train_active.csv')))
-trnadf = trnadf[,keepcols,with=F]
-gc(); gc()
-gc(); gc()
-tstdf = data.table(read_csv(paste0(path, 'test.csv')))
-tstdf = tstdf[,keepcols,with=F]
-gc(); gc()
-gc(); gc()
-tstadf = data.table(read_csv(paste0(path, 'test_active.csv')))
-tstadf = tstadf[,keepcols,with=F]
-gc(); gc()
-gc(); gc()
-alldfsm = rbind(trndf, tstdf)
-train_length = nrow(trndf)
-rm(trndf, tstdf)
-gc(); gc()
-alladf = rbind(trnadf, tstadf)
-rm(trnadf, tstadf)
-gc(); gc()
-alldfsm[, index := 1:nrow(alldfsm)]
-alladf[, index := -1]
-gc(); gc(); gc(); gc(); gc(); gc()
-
-
-# Join periods and the rest
-alladf = date2num(alladf, 'activation_date')
-alladf = alladf[(!is.na(category_name))]
-
-setkeyv(alladf, c('item_id'))
-setkeyv(allpdf, c('item_id'))
-alladf = alladf[allpdf]
-
-allpdf[item_id == '29be8c9abe10']
-
-nrow(alldf[index>1])
-
-
-
-
-
-
-usrpdf = alldf[, .(sum(activation_len), min(activation_len), max(activation_len), mean(activation_len), 
-                   length(activation_len), var(activation_len)), by = user_id]
-usrpdf[is.na(V5)]$V5 = 1
-setnames(usrpdf, c('user_id', "user_activ_sum", "user_activ_min", "user_activ_max", "user_activ_mean", 
-                   "user_activ_len", "user_activ_var" ))
-
-writeme = function(df, name) write.csv(df, gzfile(paste0(path, '../features/', name, '.gz')), row.names = F, quote = F)
-writeme(usrpdf, "user_activ_period_stats")
+writeme(outdf, 'period_ct_others_ctyttl')
 
 
