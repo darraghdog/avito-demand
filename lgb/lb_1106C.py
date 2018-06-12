@@ -340,7 +340,7 @@ lgbm_params = {
     'metric' : 'rmse',
     'num_leaves' : 250,
     'learning_rate' : 0.02,
-    'feature_fraction' : 0.5,
+    'feature_fraction' : 0.25, #0.5,
     'verbosity' : 0
 }
 

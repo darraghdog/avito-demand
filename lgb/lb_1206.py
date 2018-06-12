@@ -104,8 +104,6 @@ featprmenc = pd.read_csv(path + '../features/alldf_bayes_mean_param_1006.gz', co
 featprmtro = pd.read_csv(path + '../features/price_param_ratios1006.gz', compression = 'gzip') 
 
 featnumf.fillna(0, inplace = True)
-featencfst = pd.read_csv(path + '../features/feature_fest_1206.gz', compression = 'gzip') 
-
 featct  = pd.read_csv(path + '../features/alldf_count.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featusrttl.rename(columns={'title': 'all_titles'}, inplace = True)
 df = df.reset_index().merge(featpop, on = 'city', how = 'left')
@@ -128,22 +126,16 @@ df.drop(['idx'], axis=1,inplace=True)
 df.reset_index(inplace = True)
 df.head()
 df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc, \
-                featrdgrnk, featnumf, featprmenc, featprmtro, featencfst],axis=1)
+                featrdgrnk, featnumf, featprmenc, featprmtro],axis=1)
 #df['ridge_txt'] = featrdgtxt['ridge_preds'].values
 #df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
 df['ridge_img'] = featrdgimg['ridge_img_preds'].values
 df = df.set_index('item_id')
 df.drop(['index'], axis=1,inplace=True)
 df.columns
-del featusrttl, featusrcat, featusrprd, featenc, featrdgprc, featimgprc, featrdgrnk, featnumf, featprmenc, featprmtro, featencfst
+del featusrttl, featusrcat, featusrprd, featenc, featrdgprc, featimgprc, featrdgrnk, featnumf, featprmenc, featprmtro
 # del featusrttl, featusrcat, featusrprd, featenc, featrdgtxts
 gc.collect()
-
-print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
-
-print('[{}] Finished adding Feature Fest'.format(time.time() - start_time))
-
-
 
 print('[{}] Feature Engineering'.format(time.time() - start_time))
 for col in df.columns:
@@ -388,97 +380,83 @@ print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 
 
 '''
-[20]	train's rmse: 0.240342	valid's rmse: 0.23801
-[40]	train's rmse: 0.229737	valid's rmse: 0.227701
-[60]	train's rmse: 0.224041	valid's rmse: 0.222335
-[80]	train's rmse: 0.220658	valid's rmse: 0.21936
-[100]	train's rmse: 0.218587	valid's rmse: 0.217707
-[120]	train's rmse: 0.217062	valid's rmse: 0.216621
-[140]	train's rmse: 0.215864	valid's rmse: 0.215877
-[160]	train's rmse: 0.214913	valid's rmse: 0.215368
-[180]	train's rmse: 0.214089	valid's rmse: 0.214972
-[200]	train's rmse: 0.21337	valid's rmse: 0.214693
-[220]	train's rmse: 0.212714	valid's rmse: 0.214472
-[240]	train's rmse: 0.212084	valid's rmse: 0.214252
-[260]	train's rmse: 0.211498	valid's rmse: 0.214083
-[280]	train's rmse: 0.21094	valid's rmse: 0.213926
-[300]	train's rmse: 0.210408	valid's rmse: 0.213785
-[320]	train's rmse: 0.209889	valid's rmse: 0.213649
-[340]	train's rmse: 0.209374	valid's rmse: 0.213514
-[360]	train's rmse: 0.208877	valid's rmse: 0.213389
-[380]	train's rmse: 0.2084	valid's rmse: 0.213284
-[400]	train's rmse: 0.207933	valid's rmse: 0.213185
-[420]	train's rmse: 0.207475	valid's rmse: 0.213088
-[440]	train's rmse: 0.207026	valid's rmse: 0.213001
-[460]	train's rmse: 0.206592	valid's rmse: 0.21292
-[480]	train's rmse: 0.206148	valid's rmse: 0.21285
-[500]	train's rmse: 0.205728	valid's rmse: 0.212775
-[520]	train's rmse: 0.20531	valid's rmse: 0.212716
-[540]	train's rmse: 0.204899	valid's rmse: 0.212646
-[560]	train's rmse: 0.204504	valid's rmse: 0.212601
-[580]	train's rmse: 0.204121	valid's rmse: 0.212554
-[600]	train's rmse: 0.203731	valid's rmse: 0.212496
-[620]	train's rmse: 0.203346	valid's rmse: 0.212433
-[640]	train's rmse: 0.202962	valid's rmse: 0.212386
-[660]	train's rmse: 0.20259	valid's rmse: 0.212341
-[680]	train's rmse: 0.202223	valid's rmse: 0.212303
-[700]	train's rmse: 0.201871	valid's rmse: 0.212268
-[720]	train's rmse: 0.201529	valid's rmse: 0.212232
-[740]	train's rmse: 0.201178	valid's rmse: 0.212196
-[760]	train's rmse: 0.200838	valid's rmse: 0.21217
-[780]	train's rmse: 0.200496	valid's rmse: 0.212145
-[800]	train's rmse: 0.200171	valid's rmse: 0.212122
-[820]	train's rmse: 0.199838	valid's rmse: 0.212095
-[840]	train's rmse: 0.19953	valid's rmse: 0.212077
-[860]	train's rmse: 0.199229	valid's rmse: 0.212063
-[880]	train's rmse: 0.198929	valid's rmse: 0.212046
-[900]	train's rmse: 0.198645	valid's rmse: 0.212027
-[920]	train's rmse: 0.198369	valid's rmse: 0.212014
-[940]	train's rmse: 0.19809	valid's rmse: 0.211999
-[960]	train's rmse: 0.197788	valid's rmse: 0.211989
-[980]	train's rmse: 0.197521	valid's rmse: 0.211974
-[1000]	train's rmse: 0.197247	valid's rmse: 0.211961
-[1020]	train's rmse: 0.196975	valid's rmse: 0.21195
-[1040]	train's rmse: 0.196724	valid's rmse: 0.211942
-[1060]	train's rmse: 0.196453	valid's rmse: 0.211928
-[1080]	train's rmse: 0.196183	valid's rmse: 0.211912
-[1100]	train's rmse: 0.195897	valid's rmse: 0.211899
-[1120]	train's rmse: 0.195639	valid's rmse: 0.211896
-[1140]	train's rmse: 0.195372	valid's rmse: 0.211878
-[1160]	train's rmse: 0.195132	valid's rmse: 0.211874
-[1180]	train's rmse: 0.194871	valid's rmse: 0.21186
-[1200]	train's rmse: 0.194612	valid's rmse: 0.211849
-[1220]	train's rmse: 0.194371	valid's rmse: 0.211841
-[1240]	train's rmse: 0.194134	valid's rmse: 0.211833
-[1260]	train's rmse: 0.1939	valid's rmse: 0.211824
-[1280]	train's rmse: 0.193659	valid's rmse: 0.211818
-[1300]	train's rmse: 0.193418	valid's rmse: 0.211813
-[1320]	train's rmse: 0.193189	valid's rmse: 0.211809
-[1340]	train's rmse: 0.192949	valid's rmse: 0.211808
-[1360]	train's rmse: 0.192717	valid's rmse: 0.211801
-[1380]	train's rmse: 0.192484	valid's rmse: 0.211793
-[1400]	train's rmse: 0.192265	valid's rmse: 0.211789
-[1420]	train's rmse: 0.192039	valid's rmse: 0.211786
-[1440]	train's rmse: 0.191802	valid's rmse: 0.211781
-[1460]	train's rmse: 0.191572	valid's rmse: 0.211778
-[1480]	train's rmse: 0.191356	valid's rmse: 0.211775
-[1500]	train's rmse: 0.191119	valid's rmse: 0.211771
-[1520]	train's rmse: 0.190907	valid's rmse: 0.211767
-[1540]	train's rmse: 0.190677	valid's rmse: 0.211768
-[1560]	train's rmse: 0.19046	valid's rmse: 0.211769
-[1580]	train's rmse: 0.19024	valid's rmse: 0.211764
-[1600]	train's rmse: 0.190019	valid's rmse: 0.211758
-[1620]	train's rmse: 0.189798	valid's rmse: 0.211752
-[1640]	train's rmse: 0.189565	valid's rmse: 0.21175
-[1660]	train's rmse: 0.189364	valid's rmse: 0.211748
-[1680]	train's rmse: 0.189144	valid's rmse: 0.211742
-[1700]	train's rmse: 0.188948	valid's rmse: 0.21174
-[1720]	train's rmse: 0.188735	valid's rmse: 0.211739
-[1740]	train's rmse: 0.188522	valid's rmse: 0.211737
-[1760]	train's rmse: 0.188307	valid's rmse: 0.211739
-[1780]	train's rmse: 0.188106	valid's rmse: 0.21174
+in's rmse: 0.240546	valid's rmse: 0.23821
+[40]	train's rmse: 0.230003	valid's rmse: 0.22792
+[60]	train's rmse: 0.22423	valid's rmse: 0.222459
+[80]	train's rmse: 0.220747	valid's rmse: 0.21941
+[100]	train's rmse: 0.218616	valid's rmse: 0.217682
+[120]	train's rmse: 0.217175	valid's rmse: 0.216635
+[140]	train's rmse: 0.216041	valid's rmse: 0.215935
+[160]	train's rmse: 0.215119	valid's rmse: 0.215459
+[180]	train's rmse: 0.214315	valid's rmse: 0.215087
+[200]	train's rmse: 0.213592	valid's rmse: 0.214808
+[220]	train's rmse: 0.212944	valid's rmse: 0.214576
+[240]	train's rmse: 0.212338	valid's rmse: 0.214374
+[260]	train's rmse: 0.211765	valid's rmse: 0.214198
+[280]	train's rmse: 0.211223	valid's rmse: 0.214037
+[300]	train's rmse: 0.210704	valid's rmse: 0.213899
+[320]	train's rmse: 0.210202	valid's rmse: 0.213785
+[340]	train's rmse: 0.209701	valid's rmse: 0.213679
+[360]	train's rmse: 0.209209	valid's rmse: 0.213555
+[380]	train's rmse: 0.208725	valid's rmse: 0.213449
+[400]	train's rmse: 0.208258	valid's rmse: 0.21335
+[420]	train's rmse: 0.207801	valid's rmse: 0.213251
+[440]	train's rmse: 0.207354	valid's rmse: 0.213163
+[460]	train's rmse: 0.206923	valid's rmse: 0.213088
+[480]	train's rmse: 0.206497	valid's rmse: 0.213016
+[500]	train's rmse: 0.206083	valid's rmse: 0.212956
+[520]	train's rmse: 0.205676	valid's rmse: 0.212895
+[540]	train's rmse: 0.205271	valid's rmse: 0.212833
+[560]	train's rmse: 0.204878	valid's rmse: 0.212785
+[580]	train's rmse: 0.204491	valid's rmse: 0.212734
+[600]	train's rmse: 0.204104	valid's rmse: 0.212685
+[620]	train's rmse: 0.203736	valid's rmse: 0.212641
+[640]	train's rmse: 0.20337	valid's rmse: 0.212595
+[660]	train's rmse: 0.203012	valid's rmse: 0.212554
+[680]	train's rmse: 0.202657	valid's rmse: 0.212522
+[700]	train's rmse: 0.202304	valid's rmse: 0.212487
+[720]	train's rmse: 0.201955	valid's rmse: 0.212456
+[740]	train's rmse: 0.201617	valid's rmse: 0.212427
+[760]	train's rmse: 0.201268	valid's rmse: 0.212397
+[780]	train's rmse: 0.20096	valid's rmse: 0.212367
+[800]	train's rmse: 0.20064	valid's rmse: 0.212346
+[820]	train's rmse: 0.200313	valid's rmse: 0.212327
+[840]	train's rmse: 0.199995	valid's rmse: 0.212304
+[860]	train's rmse: 0.199694	valid's rmse: 0.212287
+[880]	train's rmse: 0.199386	valid's rmse: 0.212258
+[900]	train's rmse: 0.199081	valid's rmse: 0.212232
+[920]	train's rmse: 0.198782	valid's rmse: 0.21222
+[940]	train's rmse: 0.198506	valid's rmse: 0.212207
+[960]	train's rmse: 0.198214	valid's rmse: 0.212196
+[980]	train's rmse: 0.197941	valid's rmse: 0.212184
+[1000]	train's rmse: 0.197664	valid's rmse: 0.212172
+[1020]	train's rmse: 0.197393	valid's rmse: 0.212163
+[1040]	train's rmse: 0.19716	valid's rmse: 0.21216
+[1060]	train's rmse: 0.196901	valid's rmse: 0.212148
+[1080]	train's rmse: 0.196639	valid's rmse: 0.21214
+[1100]	train's rmse: 0.196375	valid's rmse: 0.21213
+[1120]	train's rmse: 0.196108	valid's rmse: 0.212125
+[1140]	train's rmse: 0.19584	valid's rmse: 0.212115
+[1160]	train's rmse: 0.195593	valid's rmse: 0.212112
+[1180]	train's rmse: 0.195353	valid's rmse: 0.212106
+[1200]	train's rmse: 0.195103	valid's rmse: 0.212099
+[1220]	train's rmse: 0.194851	valid's rmse: 0.212092
+[1240]	train's rmse: 0.194595	valid's rmse: 0.212084
+[1260]	train's rmse: 0.194362	valid's rmse: 0.212076
+[1280]	train's rmse: 0.194124	valid's rmse: 0.212067
+[1300]	train's rmse: 0.193898	valid's rmse: 0.212061
+[1320]	train's rmse: 0.193657	valid's rmse: 0.212053
+[1340]	train's rmse: 0.193436	valid's rmse: 0.212053
+[1360]	train's rmse: 0.193216	valid's rmse: 0.212056
+[1380]	train's rmse: 0.19299	valid's rmse: 0.212052
+[1400]	train's rmse: 0.19275	valid's rmse: 0.212044
+[1420]	train's rmse: 0.192526	valid's rmse: 0.212042
+[1440]	train's rmse: 0.192302	valid's rmse: 0.212036
+[1460]	train's rmse: 0.192065	valid's rmse: 0.212028
+[1480]	train's rmse: 0.191856	valid's rmse: 0.212026
+[1500]	train's rmse: 0.191645	valid's rmse: 0.212026
+[1520]	train's rmse: 0.191433	valid's rmse: 0.212026
 Early stopping, best iteration is:
-[1735]	train's rmse: 0.188568	valid's rmse: 0.211735
-
+[1473]	train's rmse: 0.191927	valid's rmse: 0.212023
 '''
 
