@@ -20,6 +20,8 @@ from nltk.tokenize import ToktokTokenizer
 from multiprocessing import cpu_count, Pool
 from tqdm import tqdm
 import hdbscan
+from sklearn.cluster import MiniBatchKMeans, KMeans
+from tqdm import tqdm
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
@@ -29,7 +31,7 @@ start_time = time.time()
 full = False
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
-usecols = ["item_id", 'title', 'description', "activation_date"]
+usecols = ["item_id", 'title', 'description', "activation_date", 'category_name']
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", usecols = usecols,  parse_dates = ["activation_date"], compression = 'zip')
 traindex = traindf.index
 testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", usecols = usecols,  parse_dates = ["activation_date"])
@@ -62,9 +64,32 @@ def get_coefs(t, *arr): return t-1, np.asarray(arr, dtype='float16')
 embeddings_index = dict(get_coefs(t, *o.split()[-300:]) for (t, o) in tqdm(enumerate(open(EMBEDDING_FILE))) if t>0)
 ttl_embs = np.stack(embeddings_index.values())
 del embeddings_index
+
 print('[{}] Start clustering'.format(time.time() - start_time))
-hdbscan_ = hdbscan.HDBSCAN(min_cluster_size=30)
-ttl_clust = hdbscan_.fit_predict(ttl_embs)
+batch_size = 200
+mbk = MiniBatchKMeans(init='k-means++', n_clusters=2000, batch_size=batch_size,
+                      n_init=10, max_no_improvement=10, verbose=0)
+mbk.fit(ttl_embs[:100000])
+ttl_clust = mbk.predict(ttl_embs[:100000])
+
+print('[{}] Start clustering'.format(time.time() - start_time))
+df['cluster'] = 0
+for cat in tqdm(df['category_name'].unique()[::-1]):
+    idx = df['category_name'] == cat
+    n_clusters = int(np.ceil(sum(idx)/100))
+    mbk = MiniBatchKMeans(init='k-means++', n_clusters=n_clusters, batch_size=batch_size,
+                      n_init=10, max_no_improvement=10, verbose=0)
+    fit_size = min(sum(idx), 20000)
+    mbk.fit(ttl_embs[idx][:fit_size])
+    df['cluster'][idx] = mbk.predict(ttl_embs[idx])
 print('[{}] Finish clustering'.format(time.time() - start_time))        
-pd.Series(ttl_clust).to_csv(path + '../features/title_clust.csv')
+
+
+df['title'][df['category_name']=='Товары для детей и игрушки'][df['cluster']==1]
+
+idx = df['category_name'] == 'Часы и украшения'
+
+pd.DataFrame(ttl_clust).to_csv(path + '../features/title_clust.csv')
+
+
 
