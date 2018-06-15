@@ -22,6 +22,8 @@ from tqdm import tqdm
 import hdbscan
 from sklearn.cluster import MiniBatchKMeans, KMeans
 from tqdm import tqdm
+import warnings
+warnings.filterwarnings("ignore")
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
@@ -65,31 +67,28 @@ embeddings_index = dict(get_coefs(t, *o.split()[-300:]) for (t, o) in tqdm(enume
 ttl_embs = np.stack(embeddings_index.values())
 del embeddings_index
 
+
 print('[{}] Start clustering'.format(time.time() - start_time))
 batch_size = 200
-mbk = MiniBatchKMeans(init='k-means++', n_clusters=2000, batch_size=batch_size,
-                      n_init=10, max_no_improvement=10, verbose=0)
-mbk.fit(ttl_embs[:100000])
-ttl_clust = mbk.predict(ttl_embs[:100000])
-
-print('[{}] Start clustering'.format(time.time() - start_time))
-df['cluster'] = 0
-for cat in tqdm(df['category_name'].unique()[::-1]):
-    idx = df['category_name'] == cat
-    n_clusters = int(np.ceil(sum(idx)/100))
-    mbk = MiniBatchKMeans(init='k-means++', n_clusters=n_clusters, batch_size=batch_size,
-                      n_init=10, max_no_improvement=10, verbose=0)
-    fit_size = min(sum(idx), 20000)
-    mbk.fit(ttl_embs[idx][:fit_size])
-    df['cluster'][idx] = mbk.predict(ttl_embs[idx])
+for t, sz in enumerate([400, 200, 100]):
+    clust_col = 'cluster'+str(sz)
+    df[clust_col] = 0
+    for cat in tqdm(df['category_name'].unique()[::-1]):
+        idx = df['category_name'] == cat
+        n_clusters = int(np.ceil(sum(idx)/sz))
+        mbk = MiniBatchKMeans(init='k-means++', n_clusters=n_clusters, batch_size=batch_size,
+                          n_init=10, max_no_improvement=10, verbose=0, random_state=100)
+        fit_size = min(sum(idx), 20000)
+        mbk.fit(ttl_embs[idx][:fit_size])
+        df[clust_col][idx] = mbk.predict(ttl_embs[idx])
 print('[{}] Finish clustering'.format(time.time() - start_time))        
 
+print('[{}] Write clusters'.format(time.time() - start_time))        
+#pd.DataFrame(ttl_clust).to_csv(path + '../features/title_clusts.csv')
+df[['cluster%s'%(i) for i in [100,200,400]]].head()
+df[['cluster%s'%(i) for i in [100,200,400]]].to_csv(path + '../features/title_clusts.csv', index = False)
 
-df['title'][df['category_name']=='Товары для детей и игрушки'][df['cluster']==1]
 
-idx = df['category_name'] == 'Часы и украшения'
-
-pd.DataFrame(ttl_clust).to_csv(path + '../features/title_clust.csv')
 
 
 
