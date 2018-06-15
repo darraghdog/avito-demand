@@ -2,6 +2,7 @@
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
 ================================================================================================
+lgb_1406A     0.2113             0.2136             ??????          tuning - from 250 to 1000 leaves
 lgb_1406      0.2113             0.2136             ??????          tuning - from 250 to 1000 leaves
 lgb_1106A     0.2117             0.2140             ??????          Add more encoding features
 lgb_1006      0.2120             0.2153             ??????          Add param features                    
@@ -45,6 +46,7 @@ mlp_1605B     ????               ??????             0.2208          Weighted avg
 Model         Small CV Val       5CV Val         Leaderboard     Comment
               in blend script
 ================================================================================================
+L1GBM_1506B   0.2126             ?????              0.2154          Bag the L2 lgb; Bag the 1406 sub
 L1GBM_1506    0.2127             ?????              0.2155          Add lgb 1406 leaves tuning
 L1GBM_1006A   0.2133             ?????              0.2161          Add param features
 L1GBM_1006    ??????             ?????              0.2163          Add price ranking

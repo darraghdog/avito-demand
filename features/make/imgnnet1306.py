@@ -18,6 +18,7 @@ import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras import backend as K
+import pickle, collections
 
 
 #path = '../input/'
@@ -42,11 +43,19 @@ print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 traindf['activation_date'].value_counts()
 
 print('[{}] Load Densenet image features'.format(time.time() - start_time))
-dnimgtrn = csr_matrix(np.load(path+'../features/vgg19_pool_array_train.npy'))
-save_npz(path+'../features/vgg19_pool_sparse_train.npz', dnimgtrn)
-#dnimgtst = csr_matrix(np.load(path+'../features/vgg19_pool_array_test.npy'))
+dnimgtrn = np.load(path+'../features/vgg19_pool_array_train.npy')
+dnimgtrn = dnimgtrn.astype(np.float16)
+np.save(path+'../features/vgg19_pool_sparse_train_float16.npy', dnimgtrn)
+
+#save_npz(path+'../features/vgg19_pool_sparse_train.npz', dnimgtrn)
+dnimgtst = np.load(path+'../features/vgg19_pool_array_test.npy')
+dnimgtst = dnimgtst.astype(np.float16)
+np.save(path+'../features/vgg19_pool_sparse_test_float16.npy', dnimgtst)
+
+
+
 #save_npz(path+'../features/vgg19_pool_sparse_test.npz', dnimgtst)
-dnimgtst = load_npz(path+'../features/vgg19_pool_sparse_test.npz')
+#dnimgtst = load_npz(path+'../features/vgg19_pool_sparse_test.npz')
 
 print('[{}] Combine Train and Test'.format(time.time() - start_time))
 df = pd.concat([traindf,testdf],axis=0)
