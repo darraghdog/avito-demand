@@ -33,11 +33,11 @@ start_time = time.time()
 full = False
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
-usecols = ["item_id", 'title', 'description', "activation_date", 'category_name']
-traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", usecols = usecols,  parse_dates = ["activation_date"], compression = 'zip')
-traindex = traindf.index
-testdf = pd.read_csv(path + 'test.csv.zip', index_col = "item_id", usecols = usecols,  parse_dates = ["activation_date"])
-testdex = testdf.index
+usecols = ['title', 'description', "activation_date", 'category_name']
+traindf = pd.read_csv(path + 'train.csv.zip', usecols = usecols,  parse_dates = ["activation_date"], compression = 'zip')
+testdf = pd.read_csv(path + 'test.csv.zip',  usecols = usecols,  parse_dates = ["activation_date"])
+trainadf = pd.read_csv(path + 'train_active.csv.zip', usecols = usecols,  parse_dates = ["activation_date"], compression = 'zip')
+testadf = pd.read_csv(path + 'test_active.csv.zip', usecols = usecols,  parse_dates = ["activation_date"])
 print('Train shape: {} Rows, {} Columns'.format(*traindf.shape))
 print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 traindf['activation_date'].value_counts()

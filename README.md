@@ -46,6 +46,7 @@ mlp_1605B     ????               ??????             0.2208          Weighted avg
 Model         Small CV Val       5CV Val         Leaderboard     Comment
               in blend script
 ================================================================================================
+L1GBM_1606B   0.2126             ?????              0.2154          More features at L2
 L1GBM_1506B   0.2126             ?????              0.2154          Bag the L2 lgb; Bag the 1406 sub
 L1GBM_1506    0.2127             ?????              0.2155          Add lgb 1406 leaves tuning
 L1GBM_1006A   0.2133             ?????              0.2161          Add param features

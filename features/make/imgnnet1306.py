@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import Ridge
 import keras
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.layers import Dense, Dropout, BatchNormalization, Activation
 from keras import backend as K
 import pickle, collections
 
@@ -43,14 +43,8 @@ print('Test shape: {} Rows, {} Columns'.format(*testdf.shape))
 traindf['activation_date'].value_counts()
 
 print('[{}] Load Densenet image features'.format(time.time() - start_time))
-dnimgtrn = np.load(path+'../features/vgg19_pool_array_train.npy')
-dnimgtrn = dnimgtrn.astype(np.float16)
-np.save(path+'../features/vgg19_pool_sparse_train_float16.npy', dnimgtrn)
-
-#save_npz(path+'../features/vgg19_pool_sparse_train.npz', dnimgtrn)
-dnimgtst = np.load(path+'../features/vgg19_pool_array_test.npy')
-dnimgtst = dnimgtst.astype(np.float16)
-np.save(path+'../features/vgg19_pool_sparse_test_float16.npy', dnimgtst)
+dnimgtrn = np.load(path+'../features/vgg19_pool_array_train_float16.npy')
+dnimgtst = np.load(path+'../features/vgg19_pool_array_test_float16.npy')
 
 
 
@@ -105,9 +99,17 @@ def root_mean_squared_error(y_true, y_pred):
     return K.sqrt(K.mean(K.square(y_pred - y_true)))
 def get_model(shape):
     model = Sequential()
-    model.add(Dense(1000, input_dim=shape, activation='relu'))
-    model.add(Dense(1000, activation='relu'))
-    model.add(Dense(32, activation='relu'))
+    model.add(Dense(1000, input_dim=shape))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(1000))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(32))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
     model.add(Dense(1, activation='linear'))
     optim = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-8)
     model.compile(loss=root_mean_squared_error, optimizer=optim)
@@ -115,7 +117,7 @@ def get_model(shape):
 
 
 NFOLDS = 5  
-bsize = 32
+bsize = 256
 from sklearn import preprocessing
 '''
 scaler = preprocessing.StandardScaler()
@@ -130,6 +132,7 @@ oof_train = np.zeros((ntrain,))
 oof_test = np.zeros((ntest,))
 oof_test_skf = np.empty((NFOLDS, ntest))
 for i, f in enumerate(folds):
+    print('Fold : %s'%(i))
     train_index, test_index = np.where(f==False), np.where(f)
     x_tr = dnimgtrn[train_index]
     y_tr = y.values[train_index]
@@ -144,8 +147,8 @@ for i, f in enumerate(folds):
       verbose=1)
     del x_tr, y_tr
     gc.collect()
-    oof_train[test_index] = clf.predict(x_te, batch_size=bsize*16).flatten()
-    oof_test_skf[i, :] = clf.predict(dnimgtst, batch_size=bsize*16).flatten()
+    oof_train[test_index] = clf.predict(x_te, batch_size=bsize*4).flatten()
+    oof_test_skf[i, :] = clf.predict(dnimgtst, batch_size=bsize*4).flatten()
     del x_te, train_index, test_index
     gc.collect()
 oof_test[:] = oof_test_skf.mean(axis=0)
@@ -156,7 +159,7 @@ print('Ridge OOF RMSE: {}'.format(rms))
    
 nnet_preds = np.concatenate([oof_train, oof_test_out])         
 df['nnet_imgstr_preds'] = nnet_preds
-df[['nnet_imgstr_preds']].to_csv(path + '../features/nnetImgStr5CV.csv.gz', compression = 'gzip', index = False)    
+df[['nnet_imgstr_preds']].to_csv(path + '../features/nnetImgVGGStr5CV.csv.gz', compression = 'gzip', index = False)    
 
 
 '''
