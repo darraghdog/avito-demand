@@ -465,7 +465,7 @@ y_pred_trn = pd.Series(-np.zeros(df.loc[traindex,:].shape[0]), index = traindex)
 y_pred_tst = pd.Series(-np.zeros(df.loc[testdex ,:].shape[0]), index = testdex)
 y_pred_trn.to_csv("rnndhCV_1206_trn.csv",index=True)
 y_pred_tst.to_csv("rnndhCV_1206_tst.csv",index=True) 
-for f in range(5, 6):
+for f in range(5):
     print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
     trnidx = (df['fold'].loc[traindex] != f).values
     dtrain = df.loc[traindex,:][trnidx].reset_index()
@@ -491,7 +491,7 @@ for f in range(5, 6):
     lr_decay  = (lr_init - lr_fin)/steps
 
 
-    bags      = 3
+    bags      = 2
     y_pred_ls = []
     y_sub_ls  = []
     for b in range(bags):
@@ -518,7 +518,7 @@ for f in range(5, 6):
                                 , verbose=2)[tst_sorted_ix.argsort()])
                 if f == 5:
                     if len(y_sub_ls)>1:
-                        y_pred_tst = pd.Series(sum(y_sub_ls)/len(y_sub_ls), index = testdex)
+                        y_pred_tst = pd.Series((sum(y_sub_ls)/len(y_sub_ls)).flatten(), index = testdex)
                         print(y_pred_tst.head())
                 else:
                     print('RMSE:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_sub_ls[-1].flatten())))
@@ -527,8 +527,9 @@ for f in range(5, 6):
                         print('RMSE bags:', np.sqrt(metrics.mean_squared_error(dtest['target'], y_pred.flatten()))) 
                         y_pred_trn[~trnidx] = y_pred
             gc.collect()
-    y_pred_trn.to_csv("rnndhCV_1206_trn.csv",index=True)
-    y_pred_tst.to_csv("rnndhCV_1206_tst.csv",index=True) 
+            y_pred_trn.to_csv("rnndhCV_1206B_trn.csv")
+            print(y_pred_trn.head())
+            y_pred_tst.to_csv("rnndhCV_1206B_tst.csv") 
     del dtrain, dtest, dnfimgtrn, dnfimgtst
     gc.collect()
 
@@ -538,7 +539,7 @@ rnnsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
 rnnsub.set_index('item_id', inplace = True)
 print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, rnnsub.loc[traindex])))
 # RMSE for all : 0.2168
-rnnsub.to_csv("rnndhCV_1206.csv.gz",index=True,header=True, compression = 'gzip')
+rnnsub.to_csv("rnndhCV_1206A.csv.gz",index=True,header=True, compression = 'gzip')
 
 
 
