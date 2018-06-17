@@ -22,7 +22,7 @@ from multiprocessing import cpu_count, Pool
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
-path = '/Users/dhanley2/Documents/avito/data/'
+#path = '/Users/dhanley2/Documents/avito/data/'
 #path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = False
@@ -94,7 +94,7 @@ featrdgprc = pd.read_csv(path + '../features/price_seq_category_ratios.gz', comp
 featrdgprc.fillna(-1, inplace = True)
 featimgprc = pd.read_csv(path + '../features/price_imagetop1_ratios.gz', compression = 'gzip') # created with features/make/priceImgRatios2705.R
 featenc    = pd.read_csv(path + '../features/alldf_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
-featimgrm  = pd.read_csv(path + '../features/img_top_oof_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+#featimgrm  = pd.read_csv(path + '../features/img_top_oof_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 
 featct  = pd.read_csv(path + '../features/alldf_count.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featusrttl.rename(columns={'title': 'all_titles'}, inplace = True)
@@ -117,14 +117,14 @@ df.sort_values('idx', inplace = True)
 df.drop(['idx'], axis=1,inplace=True)
 df.reset_index(inplace = True)
 df.head()
-df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc, featimgrm],axis=1)
+df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc],axis=1)
 #df['ridge_txt'] = featrdgtxt['ridge_preds'].values
 #df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
 df['ridge_img'] = featrdgimg['ridge_img_preds'].values
 df = df.set_index('item_id')
 df.drop(['index'], axis=1,inplace=True)
 df.columns
-del featusrttl, featusrcat, featusrprd, featenc, featrdgprc, featimgprc, featimgrm
+del featusrttl, featusrcat, featusrprd, featenc, featrdgprc, featimgprc
 # del featusrttl, featusrcat, featusrprd, featenc, featrdgtxts
 gc.collect()
 
