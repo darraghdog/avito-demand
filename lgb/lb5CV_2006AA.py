@@ -410,7 +410,7 @@ for bag in range(bags):
 
 lgsub = pd.concat([y_pred_trn, y_pred_tst]).reset_index()
 lgsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
-lgsub['deal_probability'] = lgsub['deal_probability']/bag
+lgsub['deal_probability'] = lgsub['deal_probability']/(bag+1)
 lgsub.set_index('item_id', inplace = True)
 print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, lgsub.loc[traindex])))
 # RMSE for all : 0.2168
