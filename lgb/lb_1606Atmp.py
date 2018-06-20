@@ -22,11 +22,10 @@ from multiprocessing import cpu_count, Pool
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
-path = '/Users/dhanley2/Documents/avito/data/'
-# path = '/home/ubuntu/avito/data/'
+#path = '/Users/dhanley2/Documents/avito/data/'
+path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = False
-CV   = True
 
 print('[{}] Load Train/Test'.format(time.time() - start_time))
 traindf = pd.read_csv(path + 'train.csv.zip', index_col = "item_id", parse_dates = ["activation_date"], compression = 'zip')
@@ -62,18 +61,28 @@ print('\nAll Data shape: {} Rows, {} Columns'.format(*df.shape))
 #print('[{}] Count NA row wise'.format(time.time() - start_time))
 #df['NA_count_rows'] = df.isnull().sum(axis=1)
 
-print('[{}] Load engineered features'.format(time.time() - start_time))
+print('[{}] Load meta image engineered features'.format(time.time() - start_time))
 featimgmeta = pd.concat([pd.read_csv(path + '../features/img_features_%s.csv.gz'%(i)) for i in range(6)])
 featimgmeta.rename(columns = {'name':'image'}, inplace = True)
 featimgmeta['image'] = featimgmeta['image'].str.replace('.jpg', '')
-df['image'].isin(featimgmeta['image']).value_counts()
 df = df.reset_index('item_id').merge(featimgmeta, on = ['image'], how = 'left').set_index('item_id')
 for col in featimgmeta.columns.values[1:]:
     df[col].fillna(-1, inplace = True)
     df[col].astype(np.float32, inplace = True)
-df.isnull().sum()   
-
-
+    
+print('[{}] Load translated image engineered features'.format(time.time() - start_time))
+feattrlten = pd.concat([pd.read_pickle(path + '../features/translate_en.pkl'),
+                       pd.read_pickle(path + '../features/translate_tst_en.pkl')])
+feattrlten['translation'] = feattrlten['title_translated'] + ' ' + feattrlten['param_1_translated'] + ' ' \
+            + feattrlten['param_2_translated'] + ' ' + feattrlten['param_3_translated'] + ' '  \
+            + feattrlten['category_name_translated'] + ' ' + feattrlten['parent_category_name_translated']
+feattrlten = feattrlten[['translation']]
+df = pd.merge(df, feattrlten, left_index=True, right_index=True, how='left')
+del feattrlten
+df['translation'].fillna('', inplace = True)
+gc.collect()
+ 
+print('[{}] Load other engineered features'.format(time.time() - start_time))
 featlatlon = pd.read_csv(path + '../features/avito_region_city_features.csv') # https://www.kaggle.com/frankherfert/region-and-city-details-with-lat-lon-and-clusters
 featlatlon.drop(['city_region', 'city_region_id', 'region_id'], 1, inplace = True)
 featpop    = pd.read_csv(path + '../features/city_population_wiki_v3.csv') # https://www.kaggle.com/stecasasso/russian-city-population-from-wikipedia/comments
@@ -83,19 +92,29 @@ featusrprd = pd.read_csv(path + '../features/user_activ_period_stats.gz', compre
 featrdgtxt = pd.read_csv(path + '../features/ridgeText5CV.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 #featrdgtxts = pd.read_csv(path + '../features/ridgeTextStr5CV.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featrdgimg = pd.read_csv(path + '../features/ridgeImg5CV.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+#featrdgimgv = pd.read_csv(path + '../features/ridgeImgVGG19_5CV.csv.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+
 #featrdgprc = pd.read_csv(path + '../features/price_category_ratios.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featrdgprc = pd.read_csv(path + '../features/price_seq_category_ratios.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
 featrdgprc.fillna(-1, inplace = True)
+featrdgrnk = pd.read_csv(path + '../features/price_rank_ratios0906.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+featrdgrnk.isnull().sum()
 featimgprc = pd.read_csv(path + '../features/price_imagetop1_ratios.gz', compression = 'gzip') # created with features/make/priceImgRatios2705.R
 featenc = pd.read_csv(path + '../features/alldf_bayes_mean.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
+featnumf = pd.read_csv(path + '../features/numericFeats.gz', compression = 'gzip') 
+featprmenc = pd.read_csv(path + '../features/alldf_bayes_mean_param_1006.gz', compression = 'gzip') 
+featprmtro = pd.read_csv(path + '../features/price_param_ratios1006.gz', compression = 'gzip') 
+featclust  = pd.read_csv(path + '../features/clust_enc_1606.gz', compression = 'gzip')
+
+featnumf.fillna(0, inplace = True)
+featencfst = pd.read_csv(path + '../features/alldf_bayes_fest_1206.gz', compression = 'gzip') 
+featprtfst = pd.read_csv(path + '../features/pratios_fest_1206.gz', compression = 'gzip')
+
 featct  = pd.read_csv(path + '../features/alldf_count.gz', compression = 'gzip') # created with features/make/user_actagg_1705.py
-featct.columns
-featimgprc.head()
 featusrttl.rename(columns={'title': 'all_titles'}, inplace = True)
 df = df.reset_index().merge(featpop, on = 'city', how = 'left')
 df = df.merge(featlatlon, on = ['city', 'region'], how = 'left')
 df['population'].fillna(-1, inplace = True)
-df.head()
 df = df.set_index('item_id')
 keep = ['user_id', 'all_titles', 'user_avg_price', 'user_ad_ct']
 df = df.reset_index().merge(featusrttl[keep], on = 'user_id').set_index('item_id')
@@ -111,35 +130,20 @@ print('[{}] Resort data correctly'.format(time.time() - start_time))
 df.sort_values('idx', inplace = True)
 df.drop(['idx'], axis=1,inplace=True)
 df.reset_index(inplace = True)
-
 df.head()
-df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc],axis=1)
+df = pd.concat([df.reset_index(),featenc, featct, featrdgtxt, featrdgprc, featimgprc, featclust, \
+                featrdgrnk, featnumf, featprmenc, featprmtro, featencfst, featprtfst],axis=1)
 #df['ridge_txt'] = featrdgtxt['ridge_preds'].values
 #df = pd.concat([df.reset_index(),featenc, featct, ],axis=1)
-
-print('[{}] Create folds'.format(time.time() - start_time))
-foldls = [["2017-03-15", "2017-03-16", "2017-03-17"], \
-       ["2017-03-18", "2017-03-19", "2017-03-20"], \
-       ["2017-03-21", "2017-03-22", "2017-03-23"], \
-       ["2017-03-24", "2017-03-25", "2017-03-26"], \
-        ["2017-03-27", "2017-03-28", "2017-03-29", \
-            "2017-03-30", "2017-03-31", "2017-04-01", \
-            "2017-04-02", "2017-04-03","2017-04-07"]]
-foldls = [[pd.to_datetime(d) for d in f] for f in foldls]
-df['fold'] = -1
-for t, fold in enumerate(foldls):
-    df['fold'][df.activation_date.isin(fold)] = t
-df['fold'].value_counts()
-df.head()
-
 df['ridge_img'] = featrdgimg['ridge_img_preds'].values
+#df['ridge_imgv'] = featrdgimgv['ridge_img_preds'].values
+
 df = df.set_index('item_id')
 df.drop(['index'], axis=1,inplace=True)
 df.columns
-del featusrttl, featusrcat, featusrprd, featenc, featrdgprc, featimgprc
+del featusrttl, featusrcat, featusrprd, featenc, featrdgprc, featimgprc, featrdgrnk, featnumf, featprmenc, featprmtro, featencfst, featprtfst, featclust
 # del featusrttl, featusrcat, featusrprd, featenc, featrdgtxts
 gc.collect()
-
 
 print('[{}] Feature Engineering'.format(time.time() - start_time))
 for col in df.columns:
@@ -152,6 +156,19 @@ for col in df.columns:
         print(f'fill {col}')
         df[col].fillna(-9,inplace=True)
 df["image_top_1"].fillna(-999,inplace=True)
+
+del featct, featlatlon, featimgmeta, featpop, featrdgimg, featrdgtxt
+gc.collect()
+
+print('[{}] Manage Memory'.format(time.time() - start_time))
+for col in df.columns:
+    if np.float64 == df[col].dtype:
+        df[col] = df[col].astype(np.float32)
+    if np.int64 == df[col].dtype:
+        df[col] = df[col].astype(np.int32)
+    gc.collect()
+df.dtypes
+
 
 print('[{}] Text Features'.format(time.time() - start_time))
 df['text_feat'] = df.apply(lambda row: ' '.join([
@@ -178,7 +195,6 @@ print('[{}] Encode Variables'.format(time.time() - start_time))
 df.drop(['user_id'], 1, inplace = True)
 categorical = ["region","parent_category_name","user_type", 'city', 'category_name', "item_seq_number", 'image_top_1']
 print("Encoding :",categorical)
-
 # Encoder:
 lbl = preprocessing.LabelEncoder()
 for col in categorical:
@@ -194,6 +210,23 @@ for cols in textfeats:
     df[cols + '_num_words'] = df[cols].apply(lambda comment: len(comment.split())) # Count number of Words
     df[cols + '_num_unique_words'] = df[cols].apply(lambda comment: len(set(w for w in comment.split())))
     df[cols + '_words_vs_unique'] = df[cols+'_num_unique_words'] / df[cols+'_num_words'] * 100 # Count Unique Words
+    gc.collect()
+df.info()
+for cols in ['translation']:
+    df[cols] = df[cols].astype(str) 
+    df[cols] = df[cols].astype(str).fillna('nicapotato') # FILL NA
+    df[cols] = df[cols].str.lower() # Lowercase all text, so that capitalized words dont get treated differently
+
+    
+print('[{}] Manage Memory'.format(time.time() - start_time))
+for col in df.columns:
+    if np.float64 == df[col].dtype:
+        df[col] = df[col].astype(np.float32)
+    if np.int64 == df[col].dtype:
+        df[col] = df[col].astype(np.int32)
+    gc.collect()
+df.info()
+
 
 print('[{}] Clean text and tokenize'.format(time.time() - start_time))
 toktok = ToktokTokenizer()
@@ -216,7 +249,7 @@ def parallelize(data, func):
     return data
 
 load_text = True
-text_cols = ['description', 'text', 'text_feat', 'title']
+text_cols = ['description', 'text', 'text_feat', 'title', 'translation']
 if load_text:
     dftxt = pd.read_csv(path + '../features/text_features_morphed.csv.gz', compression = 'gzip')
     for col in text_cols:
@@ -255,16 +288,18 @@ vectorizer = FeatureUnion([
             ngram_range=(1, 2),
             max_features=50000,
             **tfidf_para,
-            preprocessor=get_col('description'))),
+            preprocessor=get_col('text'))),
         ('text_feat',CountVectorizer(
             **countv_para,
             preprocessor=get_col('text_feat'))),
         ('title',CountVectorizer(
             **countv_para,
             preprocessor=get_col('title'))),
-        #('all_titles',CountVectorizer(
-        #    **countv_para,
-        #    preprocessor=get_col('title')))
+        ('translation',TfidfVectorizer(
+            #ngram_range=(1, 2),
+            max_features=40000,
+            **tfidf_para,
+            preprocessor=get_col('translation'))),
     ])
     
 start_vect=time.time()
@@ -274,11 +309,28 @@ tfvocab = vectorizer.get_feature_names()
 tfvocab[:50]
 print('[{}] Vectorisation completed'.format(time.time() - start_time))
 # Drop Text Cols
-df.drop(textfeats+['text', 'all_titles'], axis=1,inplace=True)
+df.drop(textfeats+['text', 'all_titles', 'translation'], axis=1,inplace=True)
 gc.collect()
 
 print('[{}] Drop all the categorical'.format(time.time() - start_time))
 df.drop(categorical, axis=1,inplace=True)
+
+ready_df.shape
+
+print('[{}] Modeling Stage'.format(time.time() - start_time))
+# Combine Dense Features with Sparse Text Bag of Words Features
+X_train = hstack([csr_matrix(df.loc[traindex,:][trnidx].values),ready_df[0:traindex.shape[0]][trnidx]])
+X_valid = hstack([csr_matrix(df.loc[traindex,:][validx].values),ready_df[0:traindex.shape[0]][validx]])
+y_train = y[trnidx]
+y_valid = y[validx]
+testing = hstack([csr_matrix(df.loc[testdex,:].values),ready_df[traindex.shape[0]:]])
+tfvocab = df.columns.tolist() + tfvocab
+for shape in [X_train, X_valid,testing]:
+    print("{} Rows and {} Cols".format(*shape.shape))
+print("Feature Names Length: ",len(tfvocab))
+del df
+gc.collect();
+
 
 # Training and Validation Set
 lgbm_params = {
@@ -286,177 +338,152 @@ lgbm_params = {
     'boosting_type': 'gbdt',
     'objective' : 'regression',
     'metric' : 'rmse',
-    'num_leaves' : 250,
-    'nthread': 4,
+    'num_leaves' : 1000,
     'learning_rate' : 0.02,
     'feature_fraction' : 0.5,
     'verbosity' : 0
-}    
-    # Placeholder for predictions
-df['fold'].value_counts()
-y_pred_trn = pd.Series(-np.zeros(df.loc[traindex,:].shape[0]), index = traindex)
-y_pred_tst = pd.Series(-np.zeros(df.loc[testdex ,:].shape[0]), index = testdex)
-for f in range(6):
-    print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
-    trnidx = (df['fold'].loc[traindex] != f).values
-    X_train = hstack([csr_matrix(df.drop('fold', 1).loc[traindex,:][trnidx].values),ready_df[0:traindex.shape[0]][trnidx]])
-    y_train = y[trnidx]
-    # 5 is the test fold
-    if f == 5:
-        X_test = hstack([csr_matrix(df.drop('fold', 1).loc[testdex,:].values),ready_df[traindex.shape[0]:]])
-    else:
-        X_test = hstack([csr_matrix(df.drop('fold', 1).loc[traindex,:][~trnidx].values),ready_df[0:traindex.shape[0]][~trnidx]])
-        y_test  = y[~trnidx]
-    tfvocab = df.drop('fold', 1).columns.tolist() + vectorizer.get_feature_names()
-    for shape in [X_train, X_test]:
-        print("Fold {} : {} Rows and {} Cols".format(f, *shape.shape))
-    gc.collect();
+}
+for i in range(5):
+    lgbm_params['seed'] = i+1
     # LGBM Dataset Formatting 
     lgtrain = lgb.Dataset(X_train, y_train,
-                    feature_name=tfvocab)
-    del X_train, y_train
-    gc.collect()
+                feature_name=tfvocab)
+    lgvalid = lgb.Dataset(X_valid, y_valid,
+                feature_name=tfvocab)
 
+    # Go Go Go
+    modelstart = time.time()
     lgb_clf = lgb.train(
         lgbm_params,
-        lgtrain,    
-        num_boost_round = 1676,
-        verbose_eval=100)    
-
-    print("Model Evaluation Stage")
-    if f == 5:
-        y_pred_tst[:] = lgb_clf.predict(X_test)
-    else:
-        y_pred_trn[~trnidx] = lgb_clf.predict(X_test)
-        print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_pred_trn[~trnidx])))
-    del X_test
-    gc.collect()
-
-
-lgsub = pd.concat([y_pred_trn, y_pred_tst]).reset_index()
-lgsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
-lgsub['deal_probability'].clip(0.0, 1.0, inplace=True)
-lgsub.set_index('item_id', inplace = True)
-print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, lgsub.loc[traindex])))
-# RMSE for all : 0.2168
-
-lgsub.to_csv("../sub/lgCV_3105.csv.gz",index=True,header=True, compression = 'gzip')
-
+        lgtrain,
+        num_boost_round=15000,
+        valid_sets=[lgtrain, lgvalid],
+        valid_names=['train','valid'],
+        early_stopping_rounds=60,
+        verbose_eval=20)
 '''
-RMSE: 0.216550108974991
-Fold 1 [5821.617654085159] Modeling Stage
-Fold 1 : 1176264 Rows and 84143 Cols
-Fold 1 : 327160 Rows and 84143 Cols
-Model Evaluation Stage
-RMSE: 0.21665335389484172
-Fold 2 [10376.067844867706] Modeling Stage
-Fold 2 : 1176532 Rows and 84143 Cols
-Fold 2 : 326892 Rows and 84143 Cols
-Model Evaluation Stage
-RMSE: 0.21924013131763104
-Fold 3 [14929.770159959793] Modeling Stage
-Fold 3 : 1195456 Rows and 84143 Cols
-Fold 3 : 307968 Rows and 84143 Cols
-Model Evaluation Stage
-RMSE: 0.2171740856960129
-Fold 4 [19466.896036863327] Modeling Stage
-Fold 4 : 1275576 Rows and 84143 Cols
-Fold 4 : 227848 Rows and 84143 Cols
-Model Evaluation Stage
-RMSE: 0.21343940208204443
-Fold 5 [24007.50591492653] Modeling Stage
-Fold 5 : 1503424 Rows and 84143 Cols
-Fold 5 : 508438 Rows and 84143 Cols
-Model Evaluation Stage
-RMSE for all : 0.21681135578306754
+# Feature Importance Plot
+f, ax = plt.subplots(figsize=[7,10])
+lgb.plot_importance(lgb_clf, max_num_features=50, ax=ax)
+plt.title("Light GBM Feature Importance")
+plt.savefig(path + '../plots/feature_import_1006A.png')
+
+print("Model Evaluation Stage")
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_valid, lgb_clf.predict(X_valid))))
+lgpred = lgb_clf.predict(testing)
+lgsub = pd.DataFrame(lgpred,columns=["deal_probability"],index=testdex)
+lgsub['deal_probability'].clip(0.0, 1.0, inplace=True) # Between 0 and 1
+#lgsub.to_csv(path + "../sub/lgsub_0206A.csv.gz",index=True,header=True, compression = 'gzip')
+print("Model Runtime: %0.2f Minutes"%((time.time() - modelstart)/60))
 '''
 
-'''
 
-[20]    train's rmse: 0.24083   valid's rmse: 0.23851
-[40]    train's rmse: 0.230468  valid's rmse: 0.228373
-[60]    train's rmse: 0.224788  valid's rmse: 0.223037
-[80]    train's rmse: 0.221476  valid's rmse: 0.220127
-[100]   train's rmse: 0.219445  valid's rmse: 0.21847
-[120]   train's rmse: 0.218033  valid's rmse: 0.21746
-[140]   train's rmse: 0.216963  valid's rmse: 0.216775
-[160]   train's rmse: 0.216071  valid's rmse: 0.216285
-[180]   train's rmse: 0.215311  valid's rmse: 0.21594
-[200]   train's rmse: 0.214628  valid's rmse: 0.21568
-[220]   train's rmse: 0.214013  valid's rmse: 0.215466
-[240]   train's rmse: 0.213438  valid's rmse: 0.215302
-[260]   train's rmse: 0.212895  valid's rmse: 0.215151
-[280]   train's rmse: 0.212377  valid's rmse: 0.215019
-[300]   train's rmse: 0.21188   valid's rmse: 0.214887
-[320]   train's rmse: 0.211412  valid's rmse: 0.214791
-[340]   train's rmse: 0.210953  valid's rmse: 0.21469
-[360]   train's rmse: 0.210505  valid's rmse: 0.214594
-[380]   train's rmse: 0.210067  valid's rmse: 0.214502
-[400]   train's rmse: 0.209638  valid's rmse: 0.214429
-[420]   train's rmse: 0.20922   valid's rmse: 0.214344
-[440]   train's rmse: 0.208806  valid's rmse: 0.214278
-[460]   train's rmse: 0.208394  valid's rmse: 0.214214
-[480]   train's rmse: 0.208005  valid's rmse: 0.214162
-[500]   train's rmse: 0.207627  valid's rmse: 0.214103
-[520]   train's rmse: 0.207255  valid's rmse: 0.214062
-[540]   train's rmse: 0.206892  valid's rmse: 0.214003
-[560]   train's rmse: 0.206541  valid's rmse: 0.213968
-[580]   train's rmse: 0.206186  valid's rmse: 0.213922
-[600]   train's rmse: 0.205853  valid's rmse: 0.213887
-[620]   train's rmse: 0.205532  valid's rmse: 0.213858
-[640]   train's rmse: 0.205217  valid's rmse: 0.213828
-[660]   train's rmse: 0.204931  valid's rmse: 0.213812
-[680]   train's rmse: 0.20463   valid's rmse: 0.213795
-[700]   train's rmse: 0.204318  valid's rmse: 0.213771
-[720]   train's rmse: 0.204027  valid's rmse: 0.213752
-[740]   train's rmse: 0.203758  valid's rmse: 0.213741
-[760]   train's rmse: 0.203467  valid's rmse: 0.213725
-[780]   train's rmse: 0.203207  valid's rmse: 0.213717
-[800]   train's rmse: 0.20294   valid's rmse: 0.213701
-[820]   train's rmse: 0.202678  valid's rmse: 0.213685
-[840]   train's rmse: 0.202418  valid's rmse: 0.21367
-[860]   train's rmse: 0.202182  valid's rmse: 0.213659
-[880]   train's rmse: 0.201914  valid's rmse: 0.213643
-[900]   train's rmse: 0.201658  valid's rmse: 0.213625
-[920]   train's rmse: 0.201426  valid's rmse: 0.213618
-[940]   train's rmse: 0.201186  valid's rmse: 0.213606
-[960]   train's rmse: 0.200954  valid's rmse: 0.2136
-[980]   train's rmse: 0.200726  valid's rmse: 0.213596
-[1000]  train's rmse: 0.200494  valid's rmse: 0.213591
-[1020]  train's rmse: 0.200268  valid's rmse: 0.213584
-[1040]  train's rmse: 0.200025  valid's rmse: 0.213576
-[1060]  train's rmse: 0.199792  valid's rmse: 0.213572
-[1080]  train's rmse: 0.199571  valid's rmse: 0.213568
-[1100]  train's rmse: 0.199339  valid's rmse: 0.213563
-[1120]  train's rmse: 0.199091  valid's rmse: 0.213542
-[1140]  train's rmse: 0.19886   valid's rmse: 0.213539
-[1160]  train's rmse: 0.198639  valid's rmse: 0.213527
-[1180]  train's rmse: 0.198415  valid's rmse: 0.213516
-[1200]  train's rmse: 0.198193  valid's rmse: 0.213515
-[1220]  train's rmse: 0.19797   valid's rmse: 0.21351
-[1240]  train's rmse: 0.197751  valid's rmse: 0.213506
-[1260]  train's rmse: 0.19753   valid's rmse: 0.2135
-[1280]  train's rmse: 0.197298  valid's rmse: 0.213494
-[1300]  train's rmse: 0.197081  valid's rmse: 0.213494
-[1320]  train's rmse: 0.196858  valid's rmse: 0.213495
-[1340]  train's rmse: 0.196626  valid's rmse: 0.213485
-[1360]  train's rmse: 0.196407  valid's rmse: 0.213478
-[1380]  train's rmse: 0.196214  valid's rmse: 0.213478
-[1400]  train's rmse: 0.19602   valid's rmse: 0.213476
-[1420]  train's rmse: 0.195823  valid's rmse: 0.213474
-[1440]  train's rmse: 0.195614  valid's rmse: 0.213472
-[1460]  train's rmse: 0.195404  valid's rmse: 0.213471
-[1480]  train's rmse: 0.195214  valid's rmse: 0.213465
-[1500]  train's rmse: 0.195011  valid's rmse: 0.213463
-[1520]  train's rmse: 0.194784  valid's rmse: 0.213456
-[1540]  train's rmse: 0.19459   valid's rmse: 0.213454
-[1560]  train's rmse: 0.194387  valid's rmse: 0.213449
-[1580]  train's rmse: 0.194195  valid's rmse: 0.213449
-[1600]  train's rmse: 0.193999  valid's rmse: 0.213439
-[1620]  train's rmse: 0.193783  valid's rmse: 0.213435
-[1640]  train's rmse: 0.19358   valid's rmse: 0.21344
-[1660]  train's rmse: 0.193394  valid's rmse: 0.21344
+'''
+[20]    train's rmse: 0.240862  valid's rmse: 0.238605
+[40]    train's rmse: 0.230173  valid's rmse: 0.2282
+[60]    train's rmse: 0.224224  valid's rmse: 0.222602
+[80]    train's rmse: 0.220627  valid's rmse: 0.2194
+[100]   train's rmse: 0.218441  valid's rmse: 0.217659
+[120]   train's rmse: 0.216918  valid's rmse: 0.216533
+[140]   train's rmse: 0.215751  valid's rmse: 0.215787
+[160]   train's rmse: 0.21477   valid's rmse: 0.215233
+[180]   train's rmse: 0.213934  valid's rmse: 0.214855
+[200]   train's rmse: 0.213196  valid's rmse: 0.214541
+[220]   train's rmse: 0.212515  valid's rmse: 0.214307
+[240]   train's rmse: 0.211876  valid's rmse: 0.214083
+[260]   train's rmse: 0.21129   valid's rmse: 0.213935
+[280]   train's rmse: 0.210735  valid's rmse: 0.213808
+[300]   train's rmse: 0.210196  valid's rmse: 0.213673
+[320]   train's rmse: 0.209674  valid's rmse: 0.213531
+[340]   train's rmse: 0.20917   valid's rmse: 0.213408
+[360]   train's rmse: 0.208678  valid's rmse: 0.213295
+[380]   train's rmse: 0.208198  valid's rmse: 0.213186
+[400]   train's rmse: 0.20773   valid's rmse: 0.213081
+[420]   train's rmse: 0.207269  valid's rmse: 0.212985
+[440]   train's rmse: 0.206819  valid's rmse: 0.212898
+[460]   train's rmse: 0.206367  valid's rmse: 0.212795
+[480]   train's rmse: 0.205926  valid's rmse: 0.212715
+[500]   train's rmse: 0.205499  valid's rmse: 0.212636
+[520]   train's rmse: 0.205087  valid's rmse: 0.212564
+[540]   train's rmse: 0.204673  valid's rmse: 0.212485
+[560]   train's rmse: 0.204278  valid's rmse: 0.212433
+[580]   train's rmse: 0.203884  valid's rmse: 0.212379
+[600]   train's rmse: 0.203508  valid's rmse: 0.212336
+[620]   train's rmse: 0.203147  valid's rmse: 0.212294
+[640]   train's rmse: 0.202781  valid's rmse: 0.212252
+[660]   train's rmse: 0.20243   valid's rmse: 0.212213
+[680]   train's rmse: 0.202087  valid's rmse: 0.212178
+[700]   train's rmse: 0.201757  valid's rmse: 0.212147
+[720]   train's rmse: 0.201413  valid's rmse: 0.212122
+[740]   train's rmse: 0.201077  valid's rmse: 0.212096
+[760]   train's rmse: 0.200771  valid's rmse: 0.212073
+[780]   train's rmse: 0.200447  valid's rmse: 0.212045
+[800]   train's rmse: 0.200124  valid's rmse: 0.212028
+[820]   train's rmse: 0.199809  valid's rmse: 0.212002
+[840]   train's rmse: 0.199508  valid's rmse: 0.211988
+[860]   train's rmse: 0.199219  valid's rmse: 0.21197
+[880]   train's rmse: 0.198915  valid's rmse: 0.211946
+[900]   train's rmse: 0.198614  valid's rmse: 0.211925
+[920]   train's rmse: 0.198313  valid's rmse: 0.211903
+[940]   train's rmse: 0.198014  valid's rmse: 0.211894
+[960]   train's rmse: 0.197726  valid's rmse: 0.21188
+[980]   train's rmse: 0.197449  valid's rmse: 0.211866
+[1000]  train's rmse: 0.197183  valid's rmse: 0.211853
+[1020]  train's rmse: 0.196904  valid's rmse: 0.211839
+[1040]  train's rmse: 0.196641  valid's rmse: 0.21183
+[1060]  train's rmse: 0.196349  valid's rmse: 0.211812
+[1080]  train's rmse: 0.196074  valid's rmse: 0.211804
+[1100]  train's rmse: 0.19582   valid's rmse: 0.211798
+[1120]  train's rmse: 0.195561  valid's rmse: 0.21178
+[1140]  train's rmse: 0.195305  valid's rmse: 0.21177
+[1160]  train's rmse: 0.195047  valid's rmse: 0.211758
+[1180]  train's rmse: 0.194793  valid's rmse: 0.211753
+[1200]  train's rmse: 0.194531  valid's rmse: 0.211744
+[1220]  train's rmse: 0.19428   valid's rmse: 0.211736
+[1240]  train's rmse: 0.194027  valid's rmse: 0.21173
+[1260]  train's rmse: 0.193775  valid's rmse: 0.211717
+[1280]  train's rmse: 0.193542  valid's rmse: 0.211705
+[1300]  train's rmse: 0.193307  valid's rmse: 0.211698
+[1320]  train's rmse: 0.193073  valid's rmse: 0.211693
+[1340]  train's rmse: 0.192845  valid's rmse: 0.211688
+[1360]  train's rmse: 0.192632  valid's rmse: 0.211683
+[1380]  train's rmse: 0.192397  valid's rmse: 0.211671
+[1400]  train's rmse: 0.192163  valid's rmse: 0.211666
+[1420]  train's rmse: 0.191938  valid's rmse: 0.211664
+[1440]  train's rmse: 0.191712  valid's rmse: 0.211668
+[1460]  train's rmse: 0.191481  valid's rmse: 0.211666
+[1480]  train's rmse: 0.191259  valid's rmse: 0.21166
+[1500]  train's rmse: 0.191012  valid's rmse: 0.211658
+[1520]  train's rmse: 0.190785  valid's rmse: 0.211656
+[1540]  train's rmse: 0.190572  valid's rmse: 0.211653
+[1560]  train's rmse: 0.190345  valid's rmse: 0.211646
+[1580]  train's rmse: 0.190111  valid's rmse: 0.211637
+[1600]  train's rmse: 0.189867  valid's rmse: 0.211623
+[1620]  train's rmse: 0.189641  valid's rmse: 0.211618
+[1640]  train's rmse: 0.189417  valid's rmse: 0.211618
+[1660]  train's rmse: 0.189188  valid's rmse: 0.211614
+[1680]  train's rmse: 0.188968  valid's rmse: 0.21161
+[1700]  train's rmse: 0.188747  valid's rmse: 0.211603
+[1720]  train's rmse: 0.188538  valid's rmse: 0.211597
+[1740]  train's rmse: 0.188325  valid's rmse: 0.211598
+[1760]  train's rmse: 0.188121  valid's rmse: 0.211592
+[1780]  train's rmse: 0.187888  valid's rmse: 0.211585
+[1800]  train's rmse: 0.187676  valid's rmse: 0.211583
+[1820]  train's rmse: 0.187453  valid's rmse: 0.211576
+[1840]  train's rmse: 0.187237  valid's rmse: 0.211575
+[1860]  train's rmse: 0.187036  valid's rmse: 0.21157
+[1880]  train's rmse: 0.186821  valid's rmse: 0.211568
+[1900]  train's rmse: 0.186635  valid's rmse: 0.211565
+[1920]  train's rmse: 0.186427  valid's rmse: 0.211561
+[1940]  train's rmse: 0.186222  valid's rmse: 0.211557
+[1960]  train's rmse: 0.186027  valid's rmse: 0.211555
+[1980]  train's rmse: 0.185835  valid's rmse: 0.211548
+[2000]  train's rmse: 0.185639  valid's rmse: 0.211549
+[2020]  train's rmse: 0.185433  valid's rmse: 0.211545
+[2040]  train's rmse: 0.185245  valid's rmse: 0.211546
+[2060]  train's rmse: 0.185059  valid's rmse: 0.21155
 Early stopping, best iteration is:
-[1615]  train's rmse: 0.193827  valid's rmse: 0.213434
+[2018]  train's rmse: 0.18545   valid's rmse: 0.211544
 
 '''
+
