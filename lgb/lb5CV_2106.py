@@ -492,8 +492,8 @@ for bag in range(bags):
             print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_pred_trn[~trnidx])))
         del X_test
         gc.collect()
-        y_pred_trn.to_csv("lgbCV_2006C_trn.csv",index=True)
-        y_pred_tst.to_csv("lgbCV_2006C_tst.csv",index=True)    
+        y_pred_trn.to_csv("lgbCV_2106_trn.csv",index=True)
+        y_pred_tst.to_csv("lgbCV_2106_tst.csv",index=True)    
 
 lgsub = pd.concat([y_pred_trn, y_pred_tst]).reset_index()
 lgsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
@@ -501,7 +501,7 @@ lgsub['deal_probability'] = lgsub['deal_probability']/(bag+1)
 lgsub.set_index('item_id', inplace = True)
 print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, lgsub.loc[traindex])))
 # RMSE for all : 0.2168
-lgsub.to_csv("lgCV_2006C.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv("lgCV_2106.csv.gz",index=True,header=True, compression = 'gzip')
 
-lgsub.to_csv(path + "../sub/lgCV_2006C.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv(path + "../sub/lgCV_2106.csv.gz",index=True,header=True, compression = 'gzip')
 
