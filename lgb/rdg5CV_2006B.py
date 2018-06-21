@@ -18,7 +18,7 @@ import pymorphy2
 import nltk, re
 from nltk.tokenize import ToktokTokenizer
 from multiprocessing import cpu_count, Pool
-
+from sklearn.linear_model import Ridge
 
 #path = '../input/'
 path = "/home/darragh/avito/data/"
@@ -451,42 +451,48 @@ for bag in range(bags):
             print("Fold {} : {} Rows and {} Cols".format(f, *shape.shape))
         gc.collect();
         # LGBM Dataset Formatting 
-        lgtrain = lgb.Dataset(X_train, y_train,
-                        feature_name=tfvocab)
-        if f != 5:
-            lgvalid = lgb.Dataset(X_test, y_test,
-                            feature_name=tfvocab)
-        del X_train, y_train
+        #lgtrain = lgb.Dataset(X_train, y_train,
+        #                feature_name=tfvocab)
+        #if f != 5:
+        #    lgvalid = lgb.Dataset(X_test, y_test,
+        #                    feature_name=tfvocab)
+        #del X_train, y_train
         gc.collect()
     
         if f==5:
-            best_iter = int(np.mean(best_iters))
+            best_iter = 0# int(np.mean(best_iters))
             print('avg best iter: %s'%(best_iter))
-            lgb_clf = lgb.train(
-                lgbm_params,
-                lgtrain,    
-                num_boost_round = best_iter,
-                verbose_eval=200)    
+            ridge = Ridge(solver='auto', fit_intercept=True, alpha=0.4, max_iter=200, normalize=False, tol=0.01)
+            ridge.fit(X_train, y_train)
+            #lgb_clf = lgb.train(
+            #    lgbm_params,
+            #    lgtrain,    
+            #    num_boost_round = best_iter,
+            #    verbose_eval=200)    
         else:
-            lgb_clf = lgb.train(
-                lgbm_params,
-                lgtrain,    
-                num_boost_round = 15000,
-                valid_sets=[lgtrain, lgvalid],
-                valid_names=['train','valid'],
-                early_stopping_rounds=50,
-                verbose_eval=100)    
-            best_iters.append(lgb_clf.best_iteration)
+            best_iter = 0# int(np.mean(best_iters))
+            print('avg best iter: %s'%(best_iter))
+            ridge = Ridge(solver='auto', fit_intercept=True, alpha=0.4, max_iter=200, normalize=False, tol=0.01)
+            ridge.fit(X_train, y_train)
+            #lgb_clf = lgb.train(
+            #    lgbm_params,
+            #    lgtrain,    
+            #    num_boost_round = 15000,
+            #    valid_sets=[lgtrain, lgvalid],
+            #    valid_names=['train','valid'],
+            #    early_stopping_rounds=50,
+            #    verbose_eval=100)    
+            #best_iters.append(lgb_clf.best_iteration)
         print("Model Evaluation Stage")
         if f == 5:
-            y_pred_tst[:] += lgb_clf.predict(X_test)
+            y_pred_tst[:] += ridge.predict(X_test)
         else:
-            y_pred_trn[~trnidx] += lgb_clf.predict(X_test)
+            y_pred_trn[~trnidx] += ridge.predict(X_test)
             print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_pred_trn[~trnidx])))
         del X_test
         gc.collect()
-        y_pred_trn.to_csv("lgbCV_2006B_trn.csv",index=True)
-        y_pred_tst.to_csv("lgbCV_2006B_tst.csv",index=True)    
+        y_pred_trn.to_csv("rdg5CV_2006B_trn.csv",index=True)
+        y_pred_tst.to_csv("rdg5CV_2006B_tst.csv",index=True)    
 
 lgsub = pd.concat([y_pred_trn, y_pred_tst]).reset_index()
 lgsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
@@ -494,7 +500,7 @@ lgsub['deal_probability'] = lgsub['deal_probability']/(bag+1)
 lgsub.set_index('item_id', inplace = True)
 print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, lgsub.loc[traindex])))
 # RMSE for all : 0.2168
-lgsub.to_csv("lgCV_2006B.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv("rdg5CV_2006B.csv.gz",index=True,header=True, compression = 'gzip')
 
-lgsub.to_csv(path + "../sub/lgCV_2006B.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv(path + "../sub/rdg5CV_2006B.csv.gz",index=True,header=True, compression = 'gzip')
 
