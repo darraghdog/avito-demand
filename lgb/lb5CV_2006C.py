@@ -395,7 +395,7 @@ vectorizer = FeatureUnion([
         #    **tfidf_para,
         #    preprocessor=get_col('translation'))),
     ])
-    
+
 start_vect=time.time()
 vectorizer.fit(df.loc[traindex,:].to_dict('records'))
 ready_df = vectorizer.transform(df.to_dict('records'))
