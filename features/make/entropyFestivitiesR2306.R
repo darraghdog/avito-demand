@@ -72,20 +72,22 @@ ls = list(list(c("user_id"), c("category_name")),
 
 
 entdt = calc_entropy(alldf, ls[[1]] [[1]], ls[[1]] [[2]], colnm)[order(user_id)]
+entdt = entdt[, "user_id", with=F]
 for(l in ls){
   colnm = paste(l[[1]], l[[2]], 'entropy', sep = '__')
   print(colnm)
-  entdt[[colnm]] = calc_entropy(alldf, l[[1]], l[[2]], colnm)[order(user_id)][[colnm]]
+  entdttmp = calc_entropy(alldf, l[[1]], l[[2]], colnm)[order(user_id)]
+  entdt[, tmp := entdttmp[[2]]  ]
+  setnames(entdt, "tmp", colnm)
 }
 
-
-
+View(entdt[1:1000])
 
 #Create a second title column
-alldf_enc = alldf[index!=-1][order(index)][, grep('_count5|_fratio5', colnames(alldf), value = T), with = F]
+alldf_enc = alldf[index!=-1][order(index)][, grep('user_id', colnames(alldf), value = T), with = F]
+alldf_enc[,index := 1:nrow(alldf_enc)]
+alldf_enc = merge(alldf_enc, entdt, by = "user_id" )[order(index)]
 View(alldf_enc[1:1000])
-sum(is.na(alldf_enc))
-
 
 # Write out the files
 writeme = function(df, name){
@@ -93,7 +95,7 @@ writeme = function(df, name){
             gzfile(paste0(path, '../features/', name,'.gz')), 
             row.names = F, quote = F)
 }
-writeme(alldf_enc, 'pratios_fest_1206')
+writeme(alldf_enc, 'user_entropy_2306')
 rm(list=ls())
 gc();gc();gc()
 
