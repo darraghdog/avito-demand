@@ -439,25 +439,28 @@ for bag in range(bags):
         print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
         trnidx = (df['fold'].loc[traindex] != f).values
         trndf = df.drop('fold', 1).loc[traindex,:][trnidx].copy()
-        trndf[trndf>10000] = 10000
-        trndf[trndf<0] = 0 
-        X_train = hstack([csr_matrix(np.log1p(trndf.values)),ready_df[0:traindex.shape[0]][trnidx]])
+        trndf[trndf>100000] = 100000
+        trndf[trndf<-1] = -1
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        trndf = scaler.fit_transform(1.5+np.log1p(trndf.values))
+        X_train = hstack([csr_matrix(trndf),ready_df[0:traindex.shape[0]][trnidx]])
         # X_train = hstack([csr_matrix(np.log1p(0.43526 + df.drop('fold', 1).loc[traindex,:][trnidx].values)),ready_df[0:traindex.shape[0]][trnidx]])
         y_train = y[trnidx]
         # 5 is the test fold
-
         if f == 5:
             tstdf = df.drop('fold', 1).loc[testdex,:].copy()
-            tstdf[tstdf>10000] = 10000
-            tstdf[tstdf<0] = 0
-            X_test = hstack([csr_matrix(np.log1p(tstdf.values)),ready_df[traindex.shape[0]:]])
+            tstdf[tstdf>100000] = 100000
+            tstdf[tstdf<-1] = -1
+            tstdf = scaler.transform(1.5+np.log1p(tstdf.values))
+            X_test = hstack([csr_matrix(tstdf.values),ready_df[traindex.shape[0]:]])
             # X_test = hstack([csr_matrix(np.log1p(0.43526 + df.drop('fold', 1).loc[testdex,:].values)),ready_df[traindex.shape[0]:]])
         else:
             tstdf =  df.drop('fold', 1).loc[traindex,:][~trnidx].copy()
-            tstdf[tstdf>10000] = 10000
-            tstdf[tstdf<0] = 0
-            X_test = hstack([csr_matrix(np.log1p(tstdf.values)), ready_df[0:traindex.shape[0]][~trnidx]])
-
+            tstdf[tstdf>100000] = 100000
+            tstdf[tstdf<-1] = -1
+            tstdf = scaler.transform(1.5+np.log1p(tstdf.values))
+            X_test = hstack([csr_matrix(tstdf.values), ready_df[0:traindex.shape[0]][~trnidx]])
             # X_test = hstack([csr_matrix(np.log1p(0.43526 + df.drop('fold', 1).loc[traindex,:][~trnidx].values)),ready_df[0:traindex.shape[0]][~trnidx]])
             y_test  = y[~trnidx]
         tfvocab = df.drop('fold', 1).columns.tolist() + vectorizer.get_feature_names()
@@ -507,8 +510,8 @@ for bag in range(bags):
             print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, y_pred_trn[~trnidx])))
         del X_test
         gc.collect()
-        y_pred_trn.to_csv("rdg5CV_2006B_trn.csv",index=True)
-        y_pred_tst.to_csv("rdg5CV_2006B_tst.csv",index=True)    
+        y_pred_trn.to_csv("rdg5CV_2206_trn.csv",index=True)
+        y_pred_tst.to_csv("rdg5CV_2206_tst.csv",index=True)    
 
 lgsub = pd.concat([y_pred_trn, y_pred_tst]).reset_index()
 lgsub.rename(columns = {0 : 'deal_probability'}, inplace=True)
@@ -516,7 +519,7 @@ lgsub['deal_probability'] = lgsub['deal_probability']/(bag+1)
 lgsub.set_index('item_id', inplace = True)
 print('RMSE for all :', np.sqrt(metrics.mean_squared_error(y, lgsub.loc[traindex])))
 # RMSE for all : 0.2168
-lgsub.to_csv("rdg5CV_2006B.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv("rdg5CV_2206.csv.gz",index=True,header=True, compression = 'gzip')
 
-lgsub.to_csv(path + "../sub/rdg5CV_2006B.csv.gz",index=True,header=True, compression = 'gzip')
+lgsub.to_csv(path + "../sub/rdg5CV_2206.csv.gz",index=True,header=True, compression = 'gzip')
 
