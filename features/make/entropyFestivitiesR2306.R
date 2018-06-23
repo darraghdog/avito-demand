@@ -71,9 +71,14 @@ ls = list(list(c("user_id"), c("category_name")),
           list(c("user_id"), c("activation_date")))
 
 
+entdt = calc_entropy(alldf, ls[[1]] [[1]], ls[[1]] [[2]], colnm)[order(user_id)]
+for(l in ls){
+  colnm = paste(l[[1]], l[[2]], 'entropy', sep = '__')
+  print(colnm)
+  entdt[[colnm]] = calc_entropy(alldf, l[[1]], l[[2]], colnm)[order(user_id)][[colnm]]
+}
 
-entropyip  <- calc_entropy(alldf, "user_id", 'parent_category_name', 'parent_category_name')
-entropyip  <- merge(entropyip, calc_entropy(alldf, "ip", 'os', 'ip_os'), by = 'ip', how="all")
+
 
 
 #Create a second title column

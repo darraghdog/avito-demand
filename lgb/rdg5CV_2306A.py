@@ -449,28 +449,27 @@ for bag in range(bags):
         print('Fold %s'%(f) + ' [{}] Modeling Stage'.format(time.time() - start_time))
         trnidx = (df['fold'].loc[traindex] != f).values
         trndf = df.drop('fold', 1).loc[traindex,:][trnidx].copy()
+        trndf = df.drop('fold', 1).loc[traindex,:][trnidx].copy()
         trndf[trndf>10000] = 10000
-        trndf[trndf<0] = 0
-        from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
-        trndf = scaler.fit_transform(trndf.values)
-        X_train = hstack([csr_matrix(trndf), csr_matrix(dnimgtrn[trnidx]), ready_df[0:traindex.shape[0]][trnidx]])
+        trndf[trndf<0] = 0 
+        X_train = hstack([csr_matrix(np.log1p(trndf.values)), csr_matrix(dnimgtrn[trnidx]),ready_df[0:traindex.shape[0]][trnidx]])
+        #X_train = hstack([csr_matrix(trndf), csr_matrix(dnimgtrn[trnidx]), ready_df[0:traindex.shape[0]][trnidx]])
         # X_train = hstack([csr_matrix(np.log1p(0.43526 + df.drop('fold', 1).loc[traindex,:][trnidx].values)),ready_df[0:traindex.shape[0]][trnidx]])
         y_train = y[trnidx]
         # 5 is the test fold
         if f == 5:
             tstdf = df.drop('fold', 1).loc[testdex,:].copy()
             tstdf[tstdf>10000] = 10000
-            tstdf[tstdf<-0] = 0
-            tstdf = scaler.transform(tstdf.values)
-            X_test = hstack([csr_matrix(tstdf), csr_matrix(dnimgtst), ready_df[traindex.shape[0]:]])
+            tstdf[tstdf<0] = 0
+            X_test = hstack([csr_matrix(np.log1p(tstdf.values)), csr_matrix(dnimgtst),ready_df[traindex.shape[0]:]])
+            #X_test = hstack([csr_matrix(tstdf), csr_matrix(dnimgtst), ready_df[traindex.shape[0]:]])
             # X_test = hstack([csr_matrix(np.log1p(0.43526 + df.drop('fold', 1).loc[testdex,:].values)),ready_df[traindex.shape[0]:]])
         else:
             tstdf =  df.drop('fold', 1).loc[traindex,:][~trnidx].copy()
             tstdf[tstdf>10000] = 10000
             tstdf[tstdf<0] = 0
-            tstdf = scaler.transform(tstdf.values)
-            X_test = hstack([csr_matrix(tstdf), csr_matrix(dnimgtrn[~trnidx]), ready_df[0:traindex.shape[0]][~trnidx]])
+            X_test = hstack([csr_matrix(np.log1p(tstdf.values)), csr_matrix(dnimgtrn[~trnidx]), ready_df[0:traindex.shape[0]][~trnidx]])
+            #X_test = hstack([csr_matrix(tstdf), csr_matrix(dnimgtrn[~trnidx]), ready_df[0:traindex.shape[0]][~trnidx]])
             # X_test = hstack([csr_matrix(np.log1p(0.43526 + df.drop('fold', 1).loc[traindex,:][~trnidx].values)),ready_df[0:traindex.shape[0]][~trnidx]])
             y_test  = y[~trnidx]
         tfvocab = df.drop('fold', 1).columns.tolist() + vectorizer.get_feature_names()
