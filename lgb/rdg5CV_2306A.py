@@ -86,12 +86,12 @@ del feattrlten
 gc.collect()
 
 print('[{}] Load Densenet image features'.format(time.time() - start_time))
-dnimgtrn = np.load(path+'../imgfeatures/densenet_pool_array_train.npy')
+dnimgtrn = np.load(path+'../features/densenet_pool_array_train.npy')
 dnimgtrn = dnimgtrn
 scaler = preprocessing.StandardScaler()
 dnimgtrn = scaler.fit_transform(dnimgtrn)
 gc.collect()
-dnimgtst = np.load(path+'../imgfeatures/densenet_pool_array_test.npy')
+dnimgtst = np.load(path+'../features/densenet_pool_array_test.npy')
 dnimgtst = scaler.transform(dnimgtst)
 gc.collect()
  
