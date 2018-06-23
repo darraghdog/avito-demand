@@ -23,7 +23,7 @@ from multiprocessing import cpu_count, Pool
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 path = '/Users/dhanley2/Documents/avito/data/'
-#path = '/home/ubuntu/avito/data/'
+path = '/home/ubuntu/avito/data/'
 start_time = time.time()
 full = False
 
@@ -335,7 +335,7 @@ def parallelize_dataframe(df, func, cores = 4):
 min_df_one=5
 min_df_bi=5
 df['text']      = (df['text'].fillna('') + ' ' + df['text_feat'].str.replace(' nan', ''))
-df.drop('text_feat', 1, inplace = True )
+#df.drop('text_feat', 1, inplace = True )
 from collections import defaultdict
 df['name_bi'] = df['title'].fillna('')  + df['description'].apply( lambda x : ' '.join( x.split()[:5] ) )
 word_count_dict_one = defaultdict(np.uint32)
@@ -365,6 +365,9 @@ print('[{}] Finished CREATING BIGRAMS...'.format(time.time() - start_time))
 
 print('[{}] Finished tokenizing text...'.format(time.time() - start_time))
 df.head()
+print(df.dtypes)
+
+
 print('[{}] [TF-IDF] Term Frequency Inverse Document Frequency Stage'.format(time.time() - start_time))
 russian_stop = set(stopwords.words('russian'))
 tfidf_para = {
@@ -413,8 +416,13 @@ tfvocab = vectorizer.get_feature_names()
 tfvocab[:50]
 print('[{}] Vectorisation completed'.format(time.time() - start_time))
 # Drop Text Cols
-df.drop(textfeats+['text', 'all_titles', 'translation'], axis=1,inplace=True)
-df.drop(['titles_last_five'], axis=1,inplace=True)
+#df.drop(textfeats+['text', 'all_titles', 'translation'], axis=1,inplace=True)
+#df.drop(['titles_last_five'], axis=1,inplace=True)
+for col in df.columns:
+    print(col, ' : ', df[col].dtype)
+    if df[col].dtype == 'object':
+        df.drop(col, 1 , inplace = True)
+
 
 gc.collect()
 

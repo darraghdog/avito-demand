@@ -18,7 +18,6 @@ import lightgbm as lgb
 import matplotlib.pyplot as plt
 from sklearn.linear_model import Ridge
 
-
 #path = '../input/'
 path = "/home/darragh/avito/data/"
 #path = '/Users/dhanley2/Documents/avito/data/'
