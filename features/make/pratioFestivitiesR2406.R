@@ -7,12 +7,9 @@ library(fasttime)
 library(Hmisc)
 library(readr)
 
-sort(table(tstdf$activation_date))
-table(trndf$activation_date)
-
 
 path = '~/avito/data/'
-#path = '/Users/dhanley2/Documents/avito/data/'
+# path = '/Users/dhanley2/Documents/avito/data/'
 
 # Write out the <ip, device, os> level
 keepcols = c("parent_category_name", "category_name", "price",  'region', 'city', 'user_type', 'activation_date',
@@ -48,49 +45,36 @@ alldf = rbind(alladf, alldfsm)
 rm(alladf, alldfsm)
 gc(); gc(); gc(); gc(); gc(); gc()
 
-#compute entropy by group, over subgrp
-calc_entropy <- function(df, group, subgrp, tgt_vn_prefix) {
-  sum1 <- df[, .N, by=list(df[[group]], df[[subgrp]])]
-  setnames(sum1, c(group, subgrp, 'subgrpcnt'))
-  sum2 <- df[, .N, by=list(df[[group]])]
-  setnames(sum2, c(group, 'cnt'))
-  sum3 <- merge(sum2, sum1, by=c(group))
-  sum3[, entropy := - log(subgrpcnt * 1.0 / cnt) * subgrpcnt * 1.0 / cnt]
-  sum3[is.na(entropy), entropy := 0]
-  sum4 <- sum3[, sum(entropy), by=list(sum3[[group]])]
-  setnames(sum4, c(group, paste(tgt_vn_prefix, 'entropy', sep='_')))
-  return(sum4)
+priceRatios = function(df, cols, prior){
+  df[, `:=`(ct = length(!is.na(price)), meanpr = mean(price, na.rm = T)), by = cols]
+  df[, tmpcol:= (((price/meanpr)*ct)+(prior))/(ct+prior)]
+  df[is.na(tmpcol), tmpcol:= 1]
+  setnames(alldf, "tmpcol", paste0(paste0(cols, collapse = '_'), "_fratio5"))
+  return(alldf)
 }
+cols = c("parent_category_name", "category_name", 'param_1', 'param_2', 'param_3', 'region', 'city')
 
-
-# get the entropy features 
-ls = list(list(c("user_id"), c("category_name")), 
-          list(c("user_id"), c("parent_category_name")),
-          list(c("user_id"), c("title")),
-          list(c("user_id"), c("param_1")),
-          list(c("user_id"), c("city")),
-          list(c("user_id"), c("param_2")),
-          list(c("user_id"), c("param_3")),
-          list(c("user_id"), c("activation_date")))
-
-
-entdt = calc_entropy(alldf, ls[[1]] [[1]], ls[[1]] [[2]], colnm)[order(user_id)]
-entdt = entdt[, "user_id", with=F]
-for(l in ls){
-  colnm = paste(l[[1]], l[[2]], 'entropy', sep = '__')
-  print(colnm)
-  entdttmp = calc_entropy(alldf, l[[1]], l[[2]], colnm)[order(user_id)]
-  entdt[, tmp := entdttmp[[2]]  ]
-  setnames(entdt, "tmp", colnm)
+# Write out the <ip, device, os> level
+ls = list(list(c("parent_category_name", "category_name", 'param_1', 'param_2', 'param_3', 'region', 'city', 'title'), 10),
+          list(c("parent_category_name", "category_name", 'param_1', 'param_2', 'param_3', 'region', 'title'), 20),
+          list(c("parent_category_name", "category_name", 'param_1', 'param_2', 'param_3', 'region'), 20),
+          list(c("parent_category_name", "category_name", 'param_1', 'param_2',  'user_id'), 20),
+          list(c("parent_category_name", "category_name", 'param_1', 'user_id', 'city'), 20),
+          list(c("parent_category_name", "category_name", 'param_1', 'param_2', 'param_3', 'region', 'user_id'), 20))
+for (l in ls){
+  cols = l[[1]]
+  prior = l[[2]]
+  print(cols)
+  alldf = priceRatios(alldf, cols, prior = prior)
+  alldf[, tmpct := .N, by= setdiff(cols, 'price')]
+  setnames(alldf, "tmpct", paste0(paste0(cols, collapse = '_'), "_count5"))
 }
-
-View(entdt[1:1000])
 
 #Create a second title column
-alldf_enc = alldf[index!=-1][order(index)][, grep('user_id', colnames(alldf), value = T), with = F]
-alldf_enc[,index := 1:nrow(alldf_enc)]
-alldf_enc = merge(alldf_enc, entdt, by = "user_id" )[order(index)]
+alldf_enc = alldf[index!=-1][order(index)][, grep('_count5|_fratio5', colnames(alldf), value = T), with = F]
 View(alldf_enc[1:1000])
+sum(is.na(alldf_enc))
+
 
 # Write out the files
 writeme = function(df, name){
@@ -98,7 +82,7 @@ writeme = function(df, name){
             gzfile(paste0(path, '../features/', name,'.gz')), 
             row.names = F, quote = F)
 }
-writeme(alldf_enc, 'user_entropy_2306')
+writeme(alldf_enc, 'pratios_fest_2406')
 rm(list=ls())
 gc();gc();gc()
 

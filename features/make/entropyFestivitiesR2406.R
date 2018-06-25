@@ -64,33 +64,67 @@ calc_entropy <- function(df, group, subgrp, tgt_vn_prefix) {
 
 
 # get the entropy features 
-ls = list(list(c("user_id"), c("category_name")), 
+usrls = list(list(c("user_id"), c("category_name")), 
           list(c("user_id"), c("parent_category_name")),
           list(c("user_id"), c("title")),
           list(c("user_id"), c("param_1")),
           list(c("user_id"), c("city")),
           list(c("user_id"), c("param_2")),
           list(c("user_id"), c("param_3")),
+          list(c("user_id"), c("price")),
           list(c("user_id"), c("activation_date")))
 
+catls = list(list(c("category_name"), c("title")),
+             list(c("category_name"), c("param_1")),
+             list(c("category_name"), c("city")),
+             list(c("category_name"), c("region")),
+             list(c("category_name"), c("price")))
 
-entdt = calc_entropy(alldf, ls[[1]] [[1]], ls[[1]] [[2]], colnm)[order(user_id)]
+ttlls = list(list(c("title"), c("category_name")),
+             list(c("title"), c("region")),
+             list(c("title"), c("price")))
+
+entdt = calc_entropy(alldf, usrls[[1]] [[1]], usrls[[1]] [[2]], colnm)[order(user_id)]
 entdt = entdt[, "user_id", with=F]
-for(l in ls){
+for(l in usrls){
   colnm = paste(l[[1]], l[[2]], 'entropy', sep = '__')
   print(colnm)
   entdttmp = calc_entropy(alldf, l[[1]], l[[2]], colnm)[order(user_id)]
   entdt[, tmp := entdttmp[[2]]  ]
   setnames(entdt, "tmp", colnm)
 }
-
 View(entdt[1:1000])
 
+catdt = calc_entropy(alldf, catls[[1]] [[1]], catls[[1]] [[2]], colnm)[order(category_name)]
+catdt = catdt[, "category_name", with=F]
+for(l in catls){
+  colnm = paste(l[[1]], l[[2]], 'entropy', sep = '__')
+  print(colnm)
+  catdttmp = calc_entropy(alldf, l[[1]], l[[2]], colnm)[order(category_name)]
+  catdt[, tmp := catdttmp[[2]]  ]
+  setnames(catdt, "tmp", colnm)
+}
+View(catdt)
+
+ttldt = calc_entropy(alldf, ttlls[[1]] [[1]], ttlls[[1]] [[2]], colnm)[order(title)]
+ttldt = ttldt[, "title", with=F]
+for(l in ttlls){
+  colnm = paste(l[[1]], l[[2]], 'entropy', sep = '__')
+  print(colnm)
+  ttldttmp = calc_entropy(alldf, l[[1]], l[[2]], colnm)[order(title)]
+  ttldt[, tmp := ttldttmp[[2]]  ]
+  setnames(ttldt, "tmp", colnm)
+}
+View(ttldt)
+
 #Create a second title column
-alldf_enc = alldf[index!=-1][order(index)][, grep('user_id', colnames(alldf), value = T), with = F]
+alldf_enc = alldf[index!=-1][order(index)][, grep('user_id|category_name|title', colnames(alldf), value = T), with = F]
 alldf_enc[,index := 1:nrow(alldf_enc)]
 alldf_enc = merge(alldf_enc, entdt, by = "user_id" )[order(index)]
+alldf_enc = merge(alldf_enc, catdt, by = "category_name" )[order(index)]
+alldf_enc = merge(alldf_enc, ttldt, by = "title" )[order(index)]
 View(alldf_enc[1:1000])
+alldf_enc[, `:=`(user_id=NULL, category_name=NULL, title=NULL, parent_category_name=NULL, index = NULL)]
 
 # Write out the files
 writeme = function(df, name){
@@ -98,7 +132,7 @@ writeme = function(df, name){
             gzfile(paste0(path, '../features/', name,'.gz')), 
             row.names = F, quote = F)
 }
-writeme(alldf_enc, 'user_entropy_2306')
+writeme(alldf_enc, 'user_entropy_2406')
 rm(list=ls())
 gc();gc();gc()
 
