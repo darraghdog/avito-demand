@@ -67,8 +67,8 @@ L1GBM_0306A   ??????             ?????              0.2167          Included tit
 ```
 
 ### Word embeddings
-=================================================================================================
 ```
+=================================================================================================
 features/wiki.ru.vec                  - https://github.com/facebookresearch/fastText/blob/master/pretrained-vectors.md
 cc.ru.300.vec.gz                      - https://github.com/facebookresearch/fastText/blob/master/docs/crawl-vectors.md
 all.norm-sz100-w10-cb0-it1-min100.w2v - http://panchenko.me/data/dsl-backup/w2v-ru/
