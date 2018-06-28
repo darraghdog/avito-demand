@@ -1,3 +1,11 @@
+### Kaggle - Avito Demand Prediction
+
+**5th Place solution - team `Optumize`**
+Predict demand for an online classified ads
+https://www.kaggle.com/c/avito-demand-prediction
+
+
+## Models Progrssion
 ### Single Models
 ```
 Model         Small Val          5CV Val            Leaderboard     Comment
